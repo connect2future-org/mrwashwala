@@ -52,6 +52,9 @@ export const AdminAuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('mrwashwala_admin_branch');
+    }
     setToken(null);
     setUser(null);
   };

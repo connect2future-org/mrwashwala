@@ -30,11 +30,20 @@ router.use(adminAuth);
 
 // Helper to calculate date boundaries
 function parseDateRange(query) {
-  const { from, to, dates } = query;
+  const { from, to, dates, period } = query;
   let currentStart, currentEnd;
   let prevStart, prevEnd;
   let currentDates = [];
   let prevDates = [];
+
+  // All Time requested if explicitly specified or if no date parameters provided
+  if (period === 'all' || from === 'all' || query.periodFilter === 'All Time' || (!from && !to && !dates && !period)) {
+    return {
+      type: 'all',
+      current: { start: new Date(0), end: new Date() },
+      previous: { start: new Date(0), end: new Date() }
+    };
+  }
 
   if (dates) {
     const datesList = dates.split(',').map(d => d.trim()).filter(Boolean).sort();
@@ -79,20 +88,18 @@ function parseDateRange(query) {
     return { type: 'range', current: { start: currentStart, end: currentEnd }, previous: { start: prevStart, end: prevEnd } };
   }
 
-  // Default: Today vs Yesterday
-  const today = new Date();
-  currentStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-  currentEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-
-  prevStart = new Date(currentStart);
-  prevStart.setDate(currentStart.getDate() - 1);
-  prevEnd = new Date(currentEnd);
-  prevEnd.setDate(currentEnd.getDate() - 1);
-
-  return { type: 'range', current: { start: currentStart, end: currentEnd }, previous: { start: prevStart, end: prevEnd } };
+  // Default: All Time
+  return {
+    type: 'all',
+    current: { start: new Date(0), end: new Date() },
+    previous: { start: new Date(0), end: new Date() }
+  };
 }
 
 function buildMongooseFilter(parsedRange, fieldName = 'createdAt') {
+  if (parsedRange.type === 'all') {
+    return {};
+  }
   if (parsedRange.type === 'discrete') {
     const orList = parsedRange.current.map(range => ({
       [fieldName]: { $gte: range.start, $lte: range.end }
@@ -106,6 +113,9 @@ function buildMongooseFilter(parsedRange, fieldName = 'createdAt') {
 }
 
 function buildMongoosePrevFilter(parsedRange, fieldName = 'createdAt') {
+  if (parsedRange.type === 'all') {
+    return {};
+  }
   if (parsedRange.type === 'discrete') {
     const orList = parsedRange.previous.map(range => ({
       [fieldName]: { $gte: range.start, $lte: range.end }
@@ -272,38 +282,44 @@ router.get('/', async (req, res) => {
       InventoryTransaction.find({ ...invBranchFilter, ...invDateFilter }).lean()
     ]);
 
-    // Fetch Previous Data
-    const [prevWebOrders, prevWalkinOrders, prevExpenses] = await Promise.all([
-      Order.find({ ...webBranchFilter, ...prevDateFilter }).lean(),
-      WalkInOrder.find({ ...walkinBranchFilter, ...prevDateFilter }).lean(),
-      Expense.find({ ...expBranchFilter, ...prevExpDateFilter }).lean()
-    ]);
+    // Fetch Previous Data only if period is not 'all'
+    let prevWebOrders = [];
+    let prevWalkinOrders = [];
+    let prevExpenses = [];
+
+    if (parsedRange.type !== 'all') {
+      [prevWebOrders, prevWalkinOrders, prevExpenses] = await Promise.all([
+        Order.find({ ...webBranchFilter, ...prevDateFilter }).lean(),
+        WalkInOrder.find({ ...walkinBranchFilter, ...prevDateFilter }).lean(),
+        Expense.find({ ...expBranchFilter, ...prevExpDateFilter }).lean()
+      ]);
+    }
 
     // Aggregate Current & Previous Period stats
     const currentStats = aggregateStats(webOrders, walkinOrders, expenses);
-    const prevStats = aggregateStats(prevWebOrders, prevWalkinOrders, prevExpenses);
+    const prevStats = parsedRange.type === 'all'
+      ? currentStats
+      : aggregateStats(prevWebOrders, prevWalkinOrders, prevExpenses);
 
-    // Calculate customer cohort metrics (New vs Returning)
-    const minDatesAgg = await Promise.all([
-      Order.aggregate([
-        { $group: { _id: '$customer.phone', minDate: { $min: '$createdAt' } } }
-      ]),
-      WalkInOrder.aggregate([
-        { $group: { _id: '$customer.phone', minDate: { $min: '$createdAt' } } }
-      ])
-    ]);
+    // Trend Buckets Generation & In-Memory Customer Aggregation
+    const allCombined = [
+      ...webOrders.map(o => ({ ...o, _type: 'Website' })),
+      ...walkinOrders.map(o => ({ ...o, _type: 'Walk-in' }))
+    ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
+    // Fast in-memory calculation for customer first order date and order counts
     const customerFirstOrderMap = {};
-    minDatesAgg[0].forEach(item => {
-      if (item._id) customerFirstOrderMap[item._id] = new Date(item.minDate);
-    });
-    minDatesAgg[1].forEach(item => {
-      if (item._id) {
-        const existing = customerFirstOrderMap[item._id];
-        const walkinDate = new Date(item.minDate);
-        if (!existing || walkinDate < existing) {
-          customerFirstOrderMap[item._id] = walkinDate;
-        }
+    const customerTotalOrdersMap = {};
+
+    allCombined.forEach(o => {
+      const phone = o.customer?.phone;
+      if (!phone) return;
+      if (o.status !== 'Cancelled') {
+        customerTotalOrdersMap[phone] = (customerTotalOrdersMap[phone] || 0) + 1;
+      }
+      const oDate = new Date(o.createdAt);
+      if (!customerFirstOrderMap[phone] || oDate < customerFirstOrderMap[phone]) {
+        customerFirstOrderMap[phone] = oDate;
       }
     });
 
@@ -326,40 +342,57 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Calculate Repeat Customer rates overall
-    const orderCountsAgg = await Promise.all([
-      Order.aggregate([
-        { $group: { _id: '$customer.phone', count: { $sum: 1 } } }
-      ]),
-      WalkInOrder.aggregate([
-        { $group: { _id: '$customer.phone', count: { $sum: 1 } } }
-      ])
-    ]);
-
-    const customerTotalOrdersMap = {};
-    orderCountsAgg[0].forEach(item => {
-      if (item._id) customerTotalOrdersMap[item._id] = item.count;
-    });
-    orderCountsAgg[1].forEach(item => {
-      if (item._id) {
-        customerTotalOrdersMap[item._id] = (customerTotalOrdersMap[item._id] || 0) + item.count;
-      }
-    });
-
     const totalUniqueCustomersDB = Object.keys(customerTotalOrdersMap).length;
     const repeatCustomersDB = Object.values(customerTotalOrdersMap).filter(count => count >= 2).length;
     const repeatCustomerPercentage = totalUniqueCustomersDB > 0 ? (repeatCustomersDB / totalUniqueCustomersDB) * 100 : 0;
 
-    // Trend Buckets Generation
+    let effectiveTrendMode = trendMode;
     const trendData = {};
-    if (parsedRange.type === 'range') {
+
+    const createInitOutletData = () => {
+      const map = {};
+      adminBranches.forEach(b => {
+        map[b.id] = { orders: 0, revenue: 0 };
+      });
+      return map;
+    };
+
+    if (parsedRange.type === 'all') {
+      let startTrend = allCombined.length > 0 ? new Date(allCombined[0].createdAt) : new Date();
+      let endTrend = new Date();
+      const daySpan = Math.ceil(Math.abs(endTrend - startTrend) / (1000 * 60 * 60 * 24));
+      
+      if (daySpan > 60) {
+        effectiveTrendMode = 'monthly';
+      } else {
+        effectiveTrendMode = 'daily';
+      }
+
+      let cur = new Date(startTrend.getFullYear(), startTrend.getMonth(), startTrend.getDate());
+      while (cur <= endTrend) {
+        let key;
+        if (effectiveTrendMode === 'monthly') {
+          key = cur.toLocaleString('default', { month: 'short', year: 'numeric' });
+        } else {
+          key = cur.toISOString().slice(0, 10);
+        }
+        if (!trendData[key]) {
+          trendData[key] = { label: key, revenue: 0, orders: 0, outletData: createInitOutletData() };
+        }
+        if (effectiveTrendMode === 'monthly') {
+          cur.setMonth(cur.getMonth() + 1);
+        } else {
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+    } else if (parsedRange.type === 'range') {
       let cur = new Date(parsedRange.current.start);
       const end = new Date(parsedRange.current.end);
       while (cur <= end) {
         let key;
-        if (trendMode === 'monthly') {
+        if (effectiveTrendMode === 'monthly') {
           key = cur.toLocaleString('default', { month: 'short', year: 'numeric' });
-        } else if (trendMode === 'weekly') {
+        } else if (effectiveTrendMode === 'weekly') {
           const tempDate = new Date(cur.valueOf());
           const dayNum = (cur.getDay() + 6) % 7;
           tempDate.setDate(tempDate.getDate() - dayNum + 3);
@@ -375,12 +408,12 @@ router.get('/', async (req, res) => {
         }
         
         if (!trendData[key]) {
-          trendData[key] = { label: key, revenue: 0, orders: 0 };
+          trendData[key] = { label: key, revenue: 0, orders: 0, outletData: createInitOutletData() };
         }
         
-        if (trendMode === 'monthly') {
+        if (effectiveTrendMode === 'monthly') {
           cur.setMonth(cur.getMonth() + 1);
-        } else if (trendMode === 'weekly') {
+        } else if (effectiveTrendMode === 'weekly') {
           cur.setDate(cur.getDate() + 7);
         } else {
           cur.setDate(cur.getDate() + 1);
@@ -388,18 +421,13 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const allCombined = [
-      ...webOrders.map(o => ({ ...o, _type: 'Website' })),
-      ...walkinOrders.map(o => ({ ...o, _type: 'Walk-in' }))
-    ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
     allCombined.forEach(o => {
       if (o.status === 'Cancelled') return;
       const oDate = new Date(o.createdAt);
       let key;
-      if (trendMode === 'monthly') {
+      if (effectiveTrendMode === 'monthly') {
         key = oDate.toLocaleString('default', { month: 'short', year: 'numeric' });
-      } else if (trendMode === 'weekly') {
+      } else if (effectiveTrendMode === 'weekly') {
         const tempDate = new Date(oDate.valueOf());
         const dayNum = (oDate.getDay() + 6) % 7;
         tempDate.setDate(tempDate.getDate() - dayNum + 3);
@@ -414,15 +442,48 @@ router.get('/', async (req, res) => {
         key = oDate.toISOString().slice(0, 10);
       }
 
-      const amt = o._type === 'Website' ? o.totalAmount : o.grandTotal;
+      const amt = o._type === 'Website' ? (o.totalAmount || 0) : (o.grandTotal || 0);
       if (!trendData[key]) {
-        trendData[key] = { label: key, revenue: 0, orders: 0 };
+        trendData[key] = { label: key, revenue: 0, orders: 0, outletData: createInitOutletData() };
       }
+      if (!trendData[key].outletData) {
+        trendData[key].outletData = createInitOutletData();
+      }
+
       trendData[key].revenue += amt;
       trendData[key].orders++;
+
+      let branchId = o._type === 'Website' ? o.selectedBranch?.id : o.branch?.id;
+      if (!branchId || !trendData[key].outletData[branchId]) {
+        branchId = 'vijaynagar-mysuru';
+      }
+      if (trendData[key].outletData[branchId]) {
+        trendData[key].outletData[branchId].orders++;
+        trendData[key].outletData[branchId].revenue += amt;
+      }
     });
 
     const trendPoints = Object.values(trendData);
+    if (trendPoints.length === 0) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      trendPoints.push({ label: todayStr, revenue: 0, orders: 0, outletData: createInitOutletData() });
+    }
+
+    const outletSeries = adminBranches.map(b => {
+      let cleanName = b.name.replace('Mr. WashWala - ', '');
+      if (cleanName.includes('2nd Stage')) cleanName = 'Vijayanagar 2nd Stage';
+      if (cleanName.includes('4th Stage')) cleanName = 'Vijayanagar 4th Stage';
+      if (cleanName.includes('1st Stage')) cleanName = 'Kuvempunagar 1st Stage';
+      return {
+        id: b.id,
+        name: cleanName,
+        data: trendPoints.map(tp => ({
+          label: tp.label,
+          orders: tp.outletData ? (tp.outletData[b.id]?.orders || 0) : 0,
+          revenue: tp.outletData ? (tp.outletData[b.id]?.revenue || 0) : 0
+        }))
+      };
+    });
 
     // Service Performance aggregation
     const serviceMap = {};
@@ -651,7 +712,8 @@ router.get('/', async (req, res) => {
       },
       outlets: {
         list: outletList,
-        best: bestOutlet
+        best: bestOutlet,
+        series: outletSeries
       },
       customers: {
         total: currentStats.uniqueCustomers,

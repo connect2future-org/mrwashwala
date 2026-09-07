@@ -1,6 +1,6 @@
 import dns from "node:dns";
 
-dns.setServers(["8.8.8.8"]);
+// dns.setServers(["8.8.8.8"]);
 import fs from 'fs';
 import express from 'express';
 import path from 'path';

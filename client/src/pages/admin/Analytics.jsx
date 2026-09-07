@@ -210,9 +210,12 @@ function HorizontalBarChart({ data, formatValFn }) {
 }
 
 // --- SUBCOMPONENT: UNIVERSAL CHART (LINE, AREA, VERTICAL BAR) ---
-function UniversalChart({ points, ticks, tickYPositions, type, color = 'var(--admin-primary)', formatValFn, width, height, paddingLeft, paddingRight, paddingTop, paddingBottom, path, areaPath, isBar = false, typeLabel = 'Value' }) {
+function UniversalChart({ points, ticks, tickYPositions, type, color = 'var(--admin-primary)', formatValFn, width, height, paddingLeft, paddingRight, paddingTop, paddingBottom, path, areaPath, chartMode = 'Line', typeLabel = 'Value' }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const interval = Math.max(1, Math.ceil(points.length / 7));
+
+  const isBar = chartMode === 'Bar';
+  const isArea = chartMode === 'Area';
 
   const plotWidth = width - paddingLeft - paddingRight;
   const barWidth = Math.max(4, Math.round((plotWidth / Math.max(points.length, 1)) * 0.5));
@@ -237,7 +240,7 @@ function UniversalChart({ points, ticks, tickYPositions, type, color = 'var(--ad
         </div>
       )}
 
-      <div style={{ position: 'relative', width: '100%', height: '180px' }}>
+      <div style={{ position: 'relative', width: '100%', height: '215px' }}>
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
           <defs>
             <linearGradient id={`grad-insights-${typeLabel}`} x1="0" y1="0" x2="0" y2="1">
@@ -262,9 +265,9 @@ function UniversalChart({ points, ticks, tickYPositions, type, color = 'var(--ad
           <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1.5" />
           <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1.5" />
 
-          {/* Area */}
-          {!isBar && areaPath && <path d={areaPath} fill={`url(#grad-insights-${typeLabel})`} />}
-          {/* Line */}
+          {/* Area ONLY in Area mode */}
+          {isArea && areaPath && <path d={areaPath} fill={`url(#grad-insights-${typeLabel})`} />}
+          {/* Line in Line and Area modes */}
           {!isBar && path && <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
 
           {/* Bars */}
@@ -278,7 +281,7 @@ function UniversalChart({ points, ticks, tickYPositions, type, color = 'var(--ad
                 width={barWidth}
                 height={barHeight}
                 fill={color}
-                rx="1"
+                rx="2"
                 onMouseEnter={() => setHoveredPoint(pt)}
                 onMouseLeave={() => setHoveredPoint(null)}
                 style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
@@ -339,12 +342,12 @@ export default function AdminAnalytics() {
   const [data, setData] = useState(null);
 
   // Filters & periods
-  const [activeTab, setActiveTab] = useState('This Month');
+  const [activeTab, setActiveTab] = useState('All Time');
   const [selectionMode, setSelectionMode] = useState('range');
   const [comparePrevious, setComparePrevious] = useState(true);
   const [trendMode, setTrendMode] = useState('daily');
 
-  const [selectedRange, setSelectedRange] = useState({ from: '', to: '' });
+  const [selectedRange, setSelectedRange] = useState({ from: 'all', to: 'all' });
   const [selectedDates, setSelectedDates] = useState([]);
 
   // Chart type selections
@@ -365,7 +368,9 @@ export default function AdminAnalytics() {
     setSelectionMode('range');
     const today = new Date();
 
-    if (period === 'Today') {
+    if (period === 'All Time') {
+      setSelectedRange({ from: 'all', to: 'all' });
+    } else if (period === 'Today') {
       const dStr = today.toISOString().slice(0, 10);
       setSelectedRange({ from: dStr, to: dStr });
     } else if (period === 'This Week') {
@@ -391,7 +396,7 @@ export default function AdminAnalytics() {
   };
 
   useEffect(() => {
-    handlePredefinedPeriod('This Month');
+    handlePredefinedPeriod('All Time');
   }, []);
 
   // Fetch data from API
@@ -407,7 +412,10 @@ export default function AdminAnalytics() {
           params.branch = selectedBranchId;
         }
 
-        if (activeTab === 'Custom') {
+        if (activeTab === 'All Time') {
+          params.period = 'all';
+          params.from = 'all';
+        } else if (activeTab === 'Custom') {
           if (selectionMode === 'range') {
             if (selectedRange.from) params.from = selectedRange.from;
             if (selectedRange.to) params.to = selectedRange.to;
@@ -456,11 +464,11 @@ export default function AdminAnalytics() {
     const maxOrders = Math.max(...trends.map(t => t.orders), 5);
 
     const width = 550;
-    const height = 180;
+    const height = 215;
     const paddingLeft = 60;
     const paddingRight = 20;
     const paddingTop = 25;
-    const paddingBottom = 45;
+    const paddingBottom = 55;
 
     const pointsRev = trends.map((t, idx) => {
       const x = paddingLeft + (idx * (width - paddingLeft - paddingRight)) / Math.max(trends.length - 1, 1);
@@ -906,12 +914,6 @@ export default function AdminAnalytics() {
                     );
                   })}
                 </div>
-
-                <ChartSwitcher
-                  selected={chartTypes.revenueTrend}
-                  options={['Line', 'Area', 'Bar']}
-                  onChange={val => setChartTypes({ ...chartTypes, revenueTrend: val })}
-                />
               </div>
             </div>
 
@@ -920,7 +922,7 @@ export default function AdminAnalytics() {
                 points={svgChartsData.pointsRev}
                 ticks={svgChartsData.ticksRev}
                 tickYPositions={svgChartsData.tickYPositionsRev}
-                type={chartTypes.revenueTrend}
+                type="Bar"
                 color="var(--admin-primary)"
                 formatValFn={formatCurrency}
                 width={svgChartsData.width}
@@ -931,11 +933,11 @@ export default function AdminAnalytics() {
                 paddingBottom={svgChartsData.paddingBottom}
                 path={svgChartsData.pathRev}
                 areaPath={svgChartsData.areaRev}
-                isBar={chartTypes.revenueTrend === 'Bar'}
+                chartMode="Bar"
                 typeLabel="Revenue"
               />
             ) : (
-              <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748B', fontStyle: 'italic', background: 'rgba(255,255,255,0.4)', borderRadius: '12px', border: '1px dashed rgba(0,0,0,0.1)' }}>
+              <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748B', fontStyle: 'italic', background: 'rgba(255,255,255,0.4)', borderRadius: '12px', border: '1px dashed rgba(0,0,0,0.1)' }}>
                 No data available for this period.
               </div>
             )}
@@ -955,12 +957,6 @@ export default function AdminAnalytics() {
                 <span className="analytics-card-title" style={{ fontSize: '1.05rem', margin: 0 }}>Orders Trend</span>
                 <p style={{ fontSize: '0.74rem', color: '#64748b', margin: '2px 0 0' }}>Timeline distribution of total order volumes processed</p>
               </div>
-
-              <ChartSwitcher
-                selected={chartTypes.ordersTrend}
-                options={['Line', 'Area', 'Bar']}
-                onChange={val => setChartTypes({ ...chartTypes, ordersTrend: val })}
-              />
             </div>
 
             {svgChartsData && svgChartsData.pathOrders ? (
@@ -968,7 +964,7 @@ export default function AdminAnalytics() {
                 points={svgChartsData.pointsOrders}
                 ticks={svgChartsData.ticksOrders}
                 tickYPositions={svgChartsData.tickYPositionsOrders}
-                type={chartTypes.ordersTrend}
+                type="Bar"
                 color="#3B82F6"
                 width={svgChartsData.width}
                 height={svgChartsData.height}
@@ -978,11 +974,11 @@ export default function AdminAnalytics() {
                 paddingBottom={svgChartsData.paddingBottom}
                 path={svgChartsData.pathOrders}
                 areaPath={svgChartsData.areaOrders}
-                isBar={chartTypes.ordersTrend === 'Bar'}
+                chartMode="Bar"
                 typeLabel="Orders"
               />
             ) : (
-              <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748B', fontStyle: 'italic', background: 'rgba(255,255,255,0.4)', borderRadius: '12px', border: '1px dashed rgba(0,0,0,0.1)' }}>
+              <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748B', fontStyle: 'italic', background: 'rgba(255,255,255,0.4)', borderRadius: '12px', border: '1px dashed rgba(0,0,0,0.1)' }}>
                 No data available for this period.
               </div>
             )}

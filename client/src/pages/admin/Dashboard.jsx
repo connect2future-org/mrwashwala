@@ -148,9 +148,12 @@ function HorizontalBarChart({ data, formatValFn }) {
 }
 
 // --- SUBCOMPONENT: SVG CHART (LINE, AREA, VERTICAL BAR) ---
-function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--admin-primary)', formatValFn, width, height, paddingLeft, paddingRight, paddingTop, paddingBottom, path, areaPath, isBar = false }) {
+function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--admin-primary)', formatValFn, width, height, paddingLeft, paddingRight, paddingTop, paddingBottom, path, areaPath, chartMode = 'Line' }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const interval = Math.max(1, Math.ceil(points.length / 6));
+
+  const isBar = chartMode === 'Bar';
+  const isArea = chartMode === 'Area';
 
   const plotWidth = width - paddingLeft - paddingRight;
   const barWidth = Math.max(4, Math.round((plotWidth / Math.max(points.length, 1)) * 0.5));
@@ -175,7 +178,7 @@ function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--ad
         </div>
       )}
 
-      <div style={{ position: 'relative', width: '100%', height: '180px' }}>
+      <div style={{ position: 'relative', width: '100%', height: '215px' }}>
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
           <defs>
             <linearGradient id={`grad-dash-kpi-${type}`} x1="0" y1="0" x2="0" y2="1">
@@ -200,9 +203,9 @@ function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--ad
           <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1.5" />
           <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1.5" />
 
-          {/* Render Area */}
-          {!isBar && areaPath && <path d={areaPath} fill={`url(#grad-dash-kpi-${type})`} />}
-          {/* Render Line */}
+          {/* Render Area ONLY in Area mode */}
+          {isArea && areaPath && <path d={areaPath} fill={`url(#grad-dash-kpi-${type})`} />}
+          {/* Render Line in Line and Area modes */}
           {!isBar && path && <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
 
           {/* Render Bars */}
@@ -216,7 +219,7 @@ function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--ad
                 width={barWidth}
                 height={barHeight}
                 fill={color}
-                rx="1"
+                rx="2"
                 onMouseEnter={() => setHoveredPoint(pt)}
                 onMouseLeave={() => setHoveredPoint(null)}
                 style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
@@ -246,7 +249,7 @@ function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--ad
               return (
                 <g key={idx}>
                   <line x1={pt.x} y1={height - paddingBottom} x2={pt.x} y2={height - paddingBottom + 4} stroke="#cbd5e1" strokeWidth="1" />
-                  <text x={pt.x} y={height - paddingBottom + 16} textAnchor="middle" fill="#475569" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
+                  <text x={pt.x} y={height - paddingBottom + 18} textAnchor="middle" fill="#475569" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                     {pt.label}
                   </text>
                 </g>
@@ -259,7 +262,190 @@ function SVGLineAreaBar({ points, ticks, tickYPositions, type, color = 'var(--ad
           <text x={paddingLeft - 10} y={paddingTop - 8} textAnchor="start" fill="#334155" style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {type === 'Revenue' ? 'Revenue (₹)' : 'Orders Count'}
           </text>
-          <text x={paddingLeft + (width - paddingLeft - paddingRight) / 2} y={height - 8} textAnchor="middle" fill="#334155" style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <text x={paddingLeft + (width - paddingLeft - paddingRight) / 2} y={height - 6} textAnchor="middle" fill="#334155" style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Timeline Period
+          </text>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// --- SUBCOMPONENT: MULTI-SERIES LINE CHART (FOR OUTLET TIME-SERIES COMPARISON) ---
+function MultiSeriesLineChart({ series = [], metricKey = 'orders', formatValFn, typeLabel = 'Value' }) {
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+
+  if (!series || series.length === 0 || !series[0].data || series[0].data.length === 0) {
+    return (
+      <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontStyle: 'italic' }}>
+        No time-series comparison data available.
+      </div>
+    );
+  }
+
+  const labels = series[0].data.map(d => d.label);
+  const colors = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+  // Collect all values to calculate Y-axis max
+  let maxVal = 0;
+  series.forEach(s => {
+    s.data.forEach(d => {
+      const v = Number(d[metricKey]) || 0;
+      if (v > maxVal) maxVal = v;
+    });
+  });
+  if (maxVal <= 0) maxVal = metricKey === 'revenue' ? 100 : 5;
+
+  const width = 550;
+  const height = 215;
+  const paddingLeft = 60;
+  const paddingRight = 20;
+  const paddingTop = 25;
+  const paddingBottom = 55;
+
+  const plotWidth = width - paddingLeft - paddingRight;
+  const plotHeight = height - paddingTop - paddingBottom;
+
+  const interval = Math.max(1, Math.ceil(labels.length / 6));
+
+  const ticks = [0, Math.round(maxVal * 0.25), Math.round(maxVal * 0.5), Math.round(maxVal * 0.75), Math.round(maxVal)];
+  const tickYPositions = ticks.map(val => height - paddingBottom - (val * plotHeight) / maxVal);
+
+  const seriesPointsAndPaths = series.map((s, sIdx) => {
+    const sColor = colors[sIdx % colors.length];
+    const points = s.data.map((d, idx) => {
+      const x = labels.length > 1
+        ? paddingLeft + (idx * plotWidth) / (labels.length - 1)
+        : paddingLeft + plotWidth / 2;
+      const val = Number(d[metricKey]) || 0;
+      const y = height - paddingBottom - (val * plotHeight) / maxVal;
+      return { x, y, val, label: d.label, outletName: s.name };
+    });
+
+    let path = '';
+    if (points.length === 1) {
+      path = `M ${paddingLeft} ${points[0].y.toFixed(1)} L ${width - paddingRight} ${points[0].y.toFixed(1)}`;
+    } else if (points.length > 1) {
+      path = points.reduce((acc, p, idx) => `${acc}${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)} `, '').trim();
+    }
+
+    return { id: s.id, name: s.name, color: sColor, points, path };
+  });
+
+  return (
+    <div className="chart-container-wrapper" style={{ position: 'relative', width: '100%' }}>
+      {/* Series Legend */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 8, paddingLeft: 4 }}>
+        {seriesPointsAndPaths.map(s => (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', fontWeight: 700, color: '#334155' }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
+            <span>{s.name}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Tooltip Overlay */}
+      {hoveredIdx !== null && (
+        <div
+          className="custom-chart-tooltip"
+          style={{
+            left: `${Math.min(seriesPointsAndPaths[0]?.points[hoveredIdx]?.x + 10, width - 180)}px`,
+            top: `10px`,
+            opacity: 1,
+            zIndex: 10,
+            pointerEvents: 'none'
+          }}
+        >
+          <div className="custom-chart-tooltip-date">{labels[hoveredIdx]}</div>
+          {seriesPointsAndPaths.map(s => {
+            const pt = s.points[hoveredIdx];
+            return (
+              <div key={s.id} className="custom-chart-tooltip-row" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                <span style={{ color: s.color, fontWeight: 'bold' }}>● {s.name}:</span>
+                <span style={{ fontWeight: 'bold' }}>{formatValFn ? formatValFn(pt?.val || 0) : (pt?.val || 0)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ position: 'relative', width: '100%', height: '215px' }}>
+        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          {/* Gridlines */}
+          {ticks.map((tick, i) => {
+            const y = tickYPositions[i];
+            return (
+              <g key={i}>
+                <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="rgba(15,23,42,0.06)" strokeDasharray="3 3" />
+                <text x={paddingLeft - 8} y={y} textAnchor="end" dominantBaseline="middle" fill="#475569" style={{ fontSize: '0.68rem', fontWeight: 600 }}>
+                  {formatValFn ? formatValFn(tick) : tick}
+                </text>
+              </g>
+            );
+          })}
+
+          <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1.5" />
+          <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1.5" />
+
+          {/* Render Series Lines */}
+          {seriesPointsAndPaths.map(s => (
+            <g key={s.id}>
+              {s.path && <path d={s.path} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+              {s.points.map((pt, idx) => (
+                <circle
+                  key={idx}
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={hoveredIdx === idx ? 6 : 3.5}
+                  fill="#ffffff"
+                  stroke={s.color}
+                  strokeWidth="2"
+                  style={{ transition: 'all 0.15s ease' }}
+                />
+              ))}
+            </g>
+          ))}
+
+          {/* Invisible Hover Rectangles */}
+          {labels.map((lbl, idx) => {
+            const ptX = seriesPointsAndPaths[0]?.points[idx]?.x || 0;
+            const colW = Math.max(12, plotWidth / Math.max(labels.length, 1));
+            return (
+              <rect
+                key={idx}
+                x={ptX - colW / 2}
+                y={paddingTop}
+                width={colW}
+                height={plotHeight}
+                fill="transparent"
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                style={{ cursor: 'pointer' }}
+              />
+            );
+          })}
+
+          {/* X Axis Labels */}
+          {labels.map((lbl, idx) => {
+            const ptX = seriesPointsAndPaths[0]?.points[idx]?.x || 0;
+            if (idx % interval === 0 || idx === labels.length - 1) {
+              return (
+                <g key={idx}>
+                  <line x1={ptX} y1={height - paddingBottom} x2={ptX} y2={height - paddingBottom + 4} stroke="#cbd5e1" strokeWidth="1" />
+                  <text x={ptX} y={height - paddingBottom + 18} textAnchor="middle" fill="#475569" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
+                    {lbl}
+                  </text>
+                </g>
+              );
+            }
+            return null;
+          })}
+
+          {/* Axis Titles */}
+          <text x={paddingLeft - 10} y={paddingTop - 8} textAnchor="start" fill="#334155" style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {typeLabel}
+          </text>
+          <text x={paddingLeft + plotWidth / 2} y={height - 6} textAnchor="middle" fill="#334155" style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Timeline Period
           </text>
         </svg>
@@ -276,9 +462,9 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
 
   // Period filters
-  const [periodFilter, setPeriodFilter] = useState('This Month');
+  const [periodFilter, setPeriodFilter] = useState('All Time');
   const [customRange, setCustomRange] = useState({ from: '', to: '' });
-  const [appliedRange, setAppliedRange] = useState({ from: '', to: '' });
+  const [appliedRange, setAppliedRange] = useState({ from: 'all', to: 'all' });
 
   // Visualizers chart types selectors
   const [chartTypes, setChartTypes] = useState({
@@ -298,7 +484,10 @@ export default function AdminDashboard() {
     let from = '';
     let to = '';
 
-    if (period === 'Today') {
+    if (period === 'All Time') {
+      from = 'all';
+      to = 'all';
+    } else if (period === 'Today') {
       const dStr = today.toISOString().slice(0, 10);
       from = dStr;
       to = dStr;
@@ -352,7 +541,10 @@ export default function AdminDashboard() {
           params.branch = selectedBranchId;
         }
 
-        if (periodFilter === 'Custom') {
+        if (periodFilter === 'All Time') {
+          params.period = 'all';
+          params.from = 'all';
+        } else if (periodFilter === 'Custom') {
           if (customRange.from) params.from = customRange.from;
           if (customRange.to) params.to = customRange.to;
         } else {
@@ -391,39 +583,49 @@ export default function AdminDashboard() {
     const maxOrders = Math.max(...trends.map(t => t.orders), 5);
 
     const width = 550;
-    const height = 180;
+    const height = 215;
     const paddingLeft = 60;
     const paddingRight = 20;
     const paddingTop = 25;
-    const paddingBottom = 45;
+    const paddingBottom = 55;
+
+    const plotWidth = width - paddingLeft - paddingRight;
 
     const pointsRev = trends.map((t, idx) => {
-      const x = paddingLeft + (idx * (width - paddingLeft - paddingRight)) / Math.max(trends.length - 1, 1);
+      const x = trends.length > 1
+        ? paddingLeft + (idx * plotWidth) / (trends.length - 1)
+        : paddingLeft + plotWidth / 2;
       const y = height - paddingBottom - (t.revenue * (height - paddingTop - paddingBottom)) / maxRev;
       return { x, y, val: t.revenue, label: t.label };
     });
 
     const pointsOrders = trends.map((t, idx) => {
-      const x = paddingLeft + (idx * (width - paddingLeft - paddingRight)) / Math.max(trends.length - 1, 1);
+      const x = trends.length > 1
+        ? paddingLeft + (idx * plotWidth) / (trends.length - 1)
+        : paddingLeft + plotWidth / 2;
       const y = height - paddingBottom - (t.orders * (height - paddingTop - paddingBottom)) / maxOrders;
       return { x, y, val: t.orders, label: t.label };
     });
 
-    const pathRev = pointsRev.reduce((acc, p, idx) => {
-      return acc + `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-    }, '');
+    let pathRev = '';
+    let areaRev = '';
+    if (pointsRev.length === 1) {
+      pathRev = `M ${paddingLeft} ${pointsRev[0].y.toFixed(1)} L ${width - paddingRight} ${pointsRev[0].y.toFixed(1)}`;
+      areaRev = `${pathRev} L ${width - paddingRight} ${(height - paddingBottom).toFixed(1)} L ${paddingLeft} ${(height - paddingBottom).toFixed(1)} Z`;
+    } else if (pointsRev.length > 1) {
+      pathRev = pointsRev.reduce((acc, p, idx) => `${acc}${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)} `, '').trim();
+      areaRev = `${pathRev} L ${pointsRev[pointsRev.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${pointsRev[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`;
+    }
 
-    const pathOrders = pointsOrders.reduce((acc, p, idx) => {
-      return acc + `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-    }, '');
-
-    const areaRev = pathRev
-      ? `${pathRev} L ${pointsRev[pointsRev.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${pointsRev[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`
-      : '';
-
-    const areaOrders = pathOrders
-      ? `${pathOrders} L ${pointsOrders[pointsOrders.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${pointsOrders[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`
-      : '';
+    let pathOrders = '';
+    let areaOrders = '';
+    if (pointsOrders.length === 1) {
+      pathOrders = `M ${paddingLeft} ${pointsOrders[0].y.toFixed(1)} L ${width - paddingRight} ${pointsOrders[0].y.toFixed(1)}`;
+      areaOrders = `${pathOrders} L ${width - paddingRight} ${(height - paddingBottom).toFixed(1)} L ${paddingLeft} ${(height - paddingBottom).toFixed(1)} Z`;
+    } else if (pointsOrders.length > 1) {
+      pathOrders = pointsOrders.reduce((acc, p, idx) => `${acc}${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)} `, '').trim();
+      areaOrders = `${pathOrders} L ${pointsOrders[pointsOrders.length - 1].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} L ${pointsOrders[0].x.toFixed(1)} ${(height - paddingBottom).toFixed(1)} Z`;
+    }
 
     const ticksRev = [0, Math.round(maxRev * 0.25), Math.round(maxRev * 0.5), Math.round(maxRev * 0.75), Math.round(maxRev)];
     const ticksOrders = [0, Math.round(maxOrders * 0.25), Math.round(maxOrders * 0.5), Math.round(maxOrders * 0.75), Math.round(maxOrders)];
@@ -495,6 +697,7 @@ export default function AdminDashboard() {
                 onChange={e => setPeriodFilter(e.target.value)}
                 style={{ fontSize: '0.76rem', height: '32px', padding: '0 8px', borderRadius: '6px', minWidth: '120px' }}
               >
+                <option value="All Time">All Time</option>
                 <option value="Today">Today</option>
                 <option value="Yesterday">Yesterday</option>
                 <option value="This Week">This Week</option>
@@ -552,9 +755,9 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* SECTION 1: 12 COMPACT KPI CARDS */}
+      {/* SECTION 1: 8 INDIVIDUAL KPI CARDS (4 CARDS PER ROW) */}
       <div className="admin-grid admin-grid--4" style={{ gap: 16 }}>
-        {/* Card 1 */}
+        {/* Card 1: Total Orders */}
         <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
           <div className="analytics-kpi-header">
             <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Total Orders</span>
@@ -567,33 +770,7 @@ export default function AdminDashboard() {
           <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Active & completed period count</span>
         </div>
 
-        {/* Card 2 */}
-        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
-          <div className="analytics-kpi-header">
-            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Pending Orders</span>
-            <div className="analytics-kpi-icon orders" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}>⚡</div>
-          </div>
-          <div>
-            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{data.kpis.pendingOrders}</div>
-            {renderComparisonBadge(data.kpis.pendingOrders, data.kpis.prevPendingOrders)}
-          </div>
-          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Orders currently in processing</span>
-        </div>
-
-        {/* Card 3 */}
-        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
-          <div className="analytics-kpi-header">
-            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Today's Orders</span>
-            <div className="analytics-kpi-icon orders" style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)' }}>⏰</div>
-          </div>
-          <div>
-            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{data.kpis.todaysOrders}</div>
-            {renderComparisonBadge(data.kpis.todaysOrders, data.kpis.prevTodaysOrders)}
-          </div>
-          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>New orders booked today</span>
-        </div>
-
-        {/* Card 4 */}
+        {/* Card 2: Revenue */}
         <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
           <div className="analytics-kpi-header">
             <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Revenue</span>
@@ -606,7 +783,20 @@ export default function AdminDashboard() {
           <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Total billing for this period</span>
         </div>
 
-        {/* Card 5 */}
+        {/* Card 3: Today's Orders */}
+        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
+          <div className="analytics-kpi-header">
+            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Today's Orders</span>
+            <div className="analytics-kpi-icon orders" style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)' }}>⏰</div>
+          </div>
+          <div>
+            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{data.kpis.todaysOrders}</div>
+            {renderComparisonBadge(data.kpis.todaysOrders, data.kpis.prevTodaysOrders)}
+          </div>
+          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>New orders booked today</span>
+        </div>
+
+        {/* Card 4: Today's Revenue */}
         <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
           <div className="analytics-kpi-header">
             <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Today's Revenue</span>
@@ -619,7 +809,20 @@ export default function AdminDashboard() {
           <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Billed revenue generated today</span>
         </div>
 
-        {/* Card 6 */}
+        {/* Card 5: Pending Orders */}
+        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
+          <div className="analytics-kpi-header">
+            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Pending Orders</span>
+            <div className="analytics-kpi-icon orders" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}>⚡</div>
+          </div>
+          <div>
+            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{data.kpis.pendingOrders}</div>
+            {renderComparisonBadge(data.kpis.pendingOrders, data.kpis.prevPendingOrders)}
+          </div>
+          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Orders currently in processing</span>
+        </div>
+
+        {/* Card 6: Walk-in Orders */}
         <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
           <div className="analytics-kpi-header">
             <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Walk-in Orders</span>
@@ -632,7 +835,7 @@ export default function AdminDashboard() {
           <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Bookings created at store branch</span>
         </div>
 
-        {/* Card 7 */}
+        {/* Card 7: Walk-in Revenue */}
         <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
           <div className="analytics-kpi-header">
             <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Walk-in Revenue</span>
@@ -645,7 +848,7 @@ export default function AdminDashboard() {
           <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Billing generated from walk-ins</span>
         </div>
 
-        {/* Card 8 */}
+        {/* Card 8: Website Revenue */}
         <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
           <div className="analytics-kpi-header">
             <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Website Revenue</span>
@@ -657,60 +860,6 @@ export default function AdminDashboard() {
           </div>
           <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Online customer bookings billing</span>
         </div>
-
-        {/* Card 9 */}
-        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
-          <div className="analytics-kpi-header">
-            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Total Customers</span>
-            <div className="analytics-kpi-icon unique" style={{ background: 'rgba(15,23,42,0.05)' }}>👥</div>
-          </div>
-          <div>
-            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{data.kpis.uniqueCustomers}</div>
-            {renderComparisonBadge(data.kpis.uniqueCustomers, data.kpis.prevUniqueCustomers)}
-          </div>
-          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Unique client customer profiles</span>
-        </div>
-
-        {/* Card 10 */}
-        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
-          <div className="analytics-kpi-header">
-            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Average Order Value</span>
-            <div className="analytics-kpi-icon aov">📊</div>
-          </div>
-          <div>
-            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{formatCurrency(data.kpis.aov)}</div>
-            {renderComparisonBadge(data.kpis.aov, data.kpis.prevAov)}
-          </div>
-          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Average billing ticket invoice</span>
-        </div>
-
-        {/* Card 11 */}
-        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
-          <div className="analytics-kpi-header">
-            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Surahi Cost (COGS)</span>
-            <div className="analytics-kpi-icon profit" style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)' }}>🛒</div>
-          </div>
-          <div>
-            <div className="analytics-card-value" style={{ fontSize: '1.4rem' }}>{formatCurrency(data.kpis.surahiCost)}</div>
-            {renderComparisonBadge(data.kpis.surahiCost, data.kpis.prevSurahiCost)}
-          </div>
-          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Dry cleaning vendor supply cost</span>
-        </div>
-
-        {/* Card 12 */}
-        <div className="analytics-card analytics-kpi-card glass-panel" style={{ padding: 16, marginBottom: 0 }}>
-          <div className="analytics-kpi-header">
-            <span className="analytics-card-title" style={{ fontSize: '0.72rem' }}>Net Profit</span>
-            <div className="analytics-kpi-icon profit">💵</div>
-          </div>
-          <div>
-            <div className="analytics-card-value" style={{ fontSize: '1.4rem', color: data.kpis.netProfit >= 0 ? '#059669' : '#b91c1c' }}>
-              {formatCurrency(data.kpis.netProfit)}
-            </div>
-            {renderComparisonBadge(data.kpis.netProfit, data.kpis.prevNetProfit)}
-          </div>
-          <span className="analytics-card-sublabel" style={{ fontSize: '0.65rem' }}>Revenue minus Surahi cost</span>
-        </div>
       </div>
 
       {/* SECTION 2: REVENUE TREND & ORDERS TREND */}
@@ -718,28 +867,6 @@ export default function AdminDashboard() {
         <div className="analytics-card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="analytics-card-title" style={{ fontSize: '1.05rem', margin: 0 }}>Revenue Trend</span>
-            {/* Chart Type Selector */}
-            <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '4px' }}>
-              {['Line', 'Area', 'Bar'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setChartTypes({ ...chartTypes, revenueTrend: type })}
-                  style={{
-                    fontSize: '0.64rem',
-                    border: 'none',
-                    padding: '3px 8px',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    background: chartTypes.revenueTrend === type ? '#ffffff' : 'transparent',
-                    color: chartTypes.revenueTrend === type ? '#0f172a' : '#64748b',
-                    boxShadow: chartTypes.revenueTrend === type ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
           </div>
 
           {svgChartsData && svgChartsData.pathRev ? (
@@ -758,10 +885,10 @@ export default function AdminDashboard() {
               paddingBottom={svgChartsData.paddingBottom}
               path={svgChartsData.pathRev}
               areaPath={svgChartsData.areaRev}
-              isBar={chartTypes.revenueTrend === 'Bar'}
+              chartMode="Bar"
             />
           ) : (
-            <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>
+            <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>
               No data available for this period.
             </div>
           )}
@@ -774,28 +901,6 @@ export default function AdminDashboard() {
         <div className="analytics-card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="analytics-card-title" style={{ fontSize: '1.05rem', margin: 0 }}>Orders Trend</span>
-            {/* Chart Type Selector */}
-            <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '4px' }}>
-              {['Line', 'Area', 'Bar'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setChartTypes({ ...chartTypes, ordersTrend: type })}
-                  style={{
-                    fontSize: '0.64rem',
-                    border: 'none',
-                    padding: '3px 8px',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    background: chartTypes.ordersTrend === type ? '#ffffff' : 'transparent',
-                    color: chartTypes.ordersTrend === type ? '#0f172a' : '#64748b',
-                    boxShadow: chartTypes.ordersTrend === type ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
           </div>
 
           {svgChartsData && svgChartsData.pathOrders ? (
@@ -813,10 +918,10 @@ export default function AdminDashboard() {
               paddingBottom={svgChartsData.paddingBottom}
               path={svgChartsData.pathOrders}
               areaPath={svgChartsData.areaOrders}
-              isBar={chartTypes.ordersTrend === 'Bar'}
+              chartMode="Bar"
             />
           ) : (
-            <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>
+            <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>
               No data available for this period.
             </div>
           )}
@@ -1044,8 +1149,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* SECTION 5: COLLECTION VS OUTSTANDING & REVENUE VS SURAHI COST */}
-      <div className="admin-grid admin-grid--2">
+      {/* SECTION 5: COLLECTION VS OUTSTANDING */}
+      <div className="admin-grid admin-grid--1">
         <div className="analytics-card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="analytics-card-title" style={{ fontSize: '1.05rem', margin: 0 }}>Collection vs Outstanding</span>
@@ -1095,64 +1200,6 @@ export default function AdminDashboard() {
             💰 Outstanding balance is <strong>{formatCurrency(data.kpis.outstandingAmount)}</strong> across period billing.
           </span>
         </div>
-
-        <div className="analytics-card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="analytics-card-title" style={{ fontSize: '1.05rem', margin: 0 }}>Revenue vs Surahi Cost (Dry Clean)</span>
-            {/* Chart Type Selector */}
-            <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '4px' }}>
-              {['Bar', 'Donut'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setChartTypes({ ...chartTypes, revenueSurahi: type })}
-                  style={{
-                    fontSize: '0.64rem',
-                    border: 'none',
-                    padding: '3px 8px',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontWeight: 700,
-                    background: chartTypes.revenueSurahi === type ? '#ffffff' : 'transparent',
-                    color: chartTypes.revenueSurahi === type ? '#0f172a' : '#64748b',
-                    boxShadow: chartTypes.revenueSurahi === type ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {data.dryCleaning.revenue > 0 ? (
-            chartTypes.revenueSurahi === 'Bar' ? (
-              <HorizontalBarChart
-                data={[
-                  { label: 'Dry Cleaning Revenue', val: data.dryCleaning.revenue },
-                  { label: 'Surahi Vendor Cost', val: data.dryCleaning.cost }
-                ]}
-                formatValFn={formatCurrency}
-              />
-            ) : (
-              <SVGDonutPie
-                data={[
-                  { label: 'Dry Cleaning Revenue', val: data.dryCleaning.revenue },
-                  { label: 'Surahi Vendor Cost', val: data.dryCleaning.cost }
-                ]}
-                isDonut={true}
-              />
-            )
-          ) : (
-            <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontStyle: 'italic' }}>
-              No Dry Cleaning data found in this period
-            </div>
-          )}
-
-          {data.dryCleaning.revenue > 0 && (
-            <span style={{ fontSize: '0.74rem', color: '#64748b', fontStyle: 'italic', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 10 }}>
-              🛒 Surahi dry-cleaning cost was <strong>{formatCurrency(data.dryCleaning.cost)}</strong>, generating <strong>{formatCurrency(data.dryCleaning.profit)}</strong> profit.
-            </span>
-          )}
-        </div>
       </div>
 
       {/* SECTION 6: LEADERBOARDS DETAILS */}
@@ -1201,8 +1248,6 @@ export default function AdminDashboard() {
                     <th>Revenue</th>
                     <th>Collected</th>
                     <th>Outstanding</th>
-                    <th>COGS</th>
-                    <th>Profit</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1218,8 +1263,6 @@ export default function AdminDashboard() {
                         <td>{formatCurrency(outlet.revenue)}</td>
                         <td>{formatCurrency(outlet.collected)}</td>
                         <td style={{ color: '#d97706' }}>{formatCurrency(outlet.outstanding)}</td>
-                        <td>{formatCurrency(outlet.surahiCost)}</td>
-                        <td style={{ fontWeight: 'bold', color: '#059669' }}>{formatCurrency(outlet.profit)}</td>
                       </tr>
                     );
                   })}
@@ -1229,6 +1272,55 @@ export default function AdminDashboard() {
           ) : (
             <div style={{ padding: '20px 0', textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>No outlet stats found</div>
           )}
+        </div>
+      </div>
+
+      {/* SECTION 7: OUTLET-WISE ANALYTICS VISUALIZATIONS */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Outlet Performance Analytics</h2>
+          <p style={{ fontSize: '0.76rem', color: '#64748b', margin: '3px 0 0' }}>Comparative time-series order volume and revenue across store branches</p>
+        </div>
+
+        <div className="admin-grid admin-grid--2">
+          {/* Visualization A: OUTLET-WISE PERFORMANCE */}
+          <div className="analytics-card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="analytics-card-title" style={{ fontSize: '1.02rem', margin: 0 }}>Outlet-Wise Performance (Order Volume)</span>
+            </div>
+
+            {data.outlets && data.outlets.series && data.outlets.series.length > 0 ? (
+              <MultiSeriesLineChart
+                series={selectedBranchId && selectedBranchId !== 'all' ? data.outlets.series.filter(s => s.id === selectedBranchId) : data.outlets.series}
+                metricKey="orders"
+                typeLabel="Orders Count"
+              />
+            ) : (
+              <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                No outlet order trends found
+              </div>
+            )}
+          </div>
+
+          {/* Visualization B: OUTLET-WISE REVENUE */}
+          <div className="analytics-card glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="analytics-card-title" style={{ fontSize: '1.02rem', margin: 0 }}>Outlet-Wise Revenue (Billed Revenue)</span>
+            </div>
+
+            {data.outlets && data.outlets.series && data.outlets.series.length > 0 ? (
+              <MultiSeriesLineChart
+                series={selectedBranchId && selectedBranchId !== 'all' ? data.outlets.series.filter(s => s.id === selectedBranchId) : data.outlets.series}
+                metricKey="revenue"
+                formatValFn={formatCurrency}
+                typeLabel="Revenue (₹)"
+              />
+            ) : (
+              <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontStyle: 'italic' }}>
+                No outlet revenue trends found
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
