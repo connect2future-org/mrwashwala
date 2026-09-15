@@ -33,6 +33,8 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [isDryCleanOpen, setIsDryCleanOpen] = useState(false);
+  const [isShoeCleanOpen, setIsShoeCleanOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [homeMascotVideoIndex, setHomeMascotVideoIndex] = useState(0);
   useEffect(() => {
@@ -140,6 +142,22 @@ export default function App() {
     setIsCustomizeOpen(false);
   };
 
+  const openDryClean = () => {
+    setIsDryCleanOpen(true);
+  };
+
+  const closeDryClean = () => {
+    setIsDryCleanOpen(false);
+  };
+
+  const openShoeClean = () => {
+    setIsShoeCleanOpen(true);
+  };
+
+  const closeShoeClean = () => {
+    setIsShoeCleanOpen(false);
+  };
+
 
   const handleHomeMascotVideoEnded = () => {
     setHomeMascotVideoIndex((prev) => (prev + 1) % HOME_MASCOT_VIDEOS.length);
@@ -198,6 +216,12 @@ export default function App() {
               isCustomizeOpen={isCustomizeOpen}
               onOpenCustomize={openCustomize}
               onCloseCustomize={closeCustomize}
+              isDryCleanOpen={isDryCleanOpen}
+              onOpenDryClean={openDryClean}
+              onCloseDryClean={closeDryClean}
+              isShoeCleanOpen={isShoeCleanOpen}
+              onOpenShoeClean={openShoeClean}
+              onCloseShoeClean={closeShoeClean}
               onRemoveItem={handleRemoveItem}
               onOpenCheckout={openCheckout}
               isCheckoutOpen={isCheckoutOpen}

@@ -1,100 +1,99 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import API from "../api/api";
+
+const CATEGORY_ORDER = [
+  "Bed Sheet Washing",
+  "Blanket Washing",
+  "Additional Services"
+];
 
 export default function CustomizeSidebar({
   isOpen,
   onClose,
   onUpdateQuantity,
-  cart
+  cart = []
 }) {
   const [toast, setToast] = useState("");
   const [services, setServices] = useState([]);
-  const [openSections, setOpenSections] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const fetchCustomizeServices = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await API.get('/api/services', {
           params: { displayType: 'customize' }
         });
-        setServices(response.data || []);
-      } catch (error) {
-        console.error('Failed to load customize services', error);
+        
+        const fetched = response.data || [];
+        // Filter out Dry Clean, Shoe Cleaning items, and inactive items
+        const customizedItems = fetched.filter(item => 
+          item.customizeCategory && 
+          item.customizeCategory !== 'Dry Clean' &&
+          item.customizeCategory !== 'Shoe Cleaning' &&
+          item.isActive !== false
+        );
+
+        // Sort items by sortOrder
+        customizedItems.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        setServices(customizedItems);
+      } catch (err) {
+        console.error('Failed to load customize services', err);
+        setError('Unable to load customization options right now.');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchCustomizeServices();
-  }, []);
+  }, [isOpen]);
 
   const groupedServices = useMemo(() => {
-    return services.reduce((result, service) => {
-      const category = service.customizeCategory || 'Other';
-      const subcategory = service.customizeSubcategory || '';
-
-      if (!result[category]) {
-        result[category] = {
-          subcategories: {},
-          items: []
-        };
-      }
-
-      if (subcategory) {
-        if (!result[category].subcategories[subcategory]) {
-          result[category].subcategories[subcategory] = [];
-        }
-        result[category].subcategories[subcategory].push(service);
-      } else {
-        result[category].items.push(service);
-      }
-
-      return result;
-    }, {});
-  }, [services]);
-
-  useEffect(() => {
-    const nextOpen = {};
-    Object.keys(groupedServices).forEach((category) => {
-      nextOpen[`category-${category}`] = true;
-      Object.keys(groupedServices[category].subcategories).forEach((subcategory) => {
-        nextOpen[`subcategory-${category}-${subcategory}`] = false;
-      });
+    const result = {};
+    
+    // Initialize required category groups in fixed order
+    CATEGORY_ORDER.forEach(cat => {
+      result[cat] = [];
     });
-    setOpenSections((prev) => ({ ...nextOpen, ...prev }));
-  }, [groupedServices]);
+
+    services.forEach(service => {
+      const category = service.customizeCategory || 'Additional Services';
+      if (!result[category]) {
+        result[category] = [];
+      }
+      result[category].push(service);
+    });
+
+    // Remove empty category groups
+    Object.keys(result).forEach(cat => {
+      if (result[cat].length === 0) {
+        delete result[cat];
+      }
+    });
+
+    return result;
+  }, [services]);
 
   const getCartQty = (itemName) => {
     const item = cart.find((i) => i.name === itemName);
     return item ? item.quantity : 0;
   };
 
-  const getMessage = (itemName) => {
-    const messages = {
-      "Shirt/T-Shirt": "👕 One clean shirt coming up!",
-      "Formal/Jeans": "👖 Fresh jeans on the way!",
-      "Coat": "🧥 Your coat will look brand new!",
-      "Jacket": "🧥 Jacket refresh incoming!",
-      "Kurta": "✨ Fresh kurta coming up!",
-      "Salwar": "✨ Fresh salwar coming up!",
-      "Saree": "🌸 Your saree is in good hands!",
-      "Dress": "👗 One sparkling dress coming up!",
-      "Western": "✨ Fresh western wear coming up!",
-      "Big Blankets": "🛏️ One fluffy blanket coming up!",
-      "Small Blankets": "🛏️ Cozy blanket refresh incoming!",
-      "Bedsheets": "🛌 Fresh bedsheets on the way!",
-      "Sports Shoe": "👟 Sports shoes getting a makeover!",
-      "Casual Shoe": "👟 Casual shoes freshening up!",
-      "Formal/Leather": "✨ Leather shoes getting polished!",
-      "Boots": "🥾 Boots cleaning in progress!",
-      "Toy Cleaning": "🧸 Toy cleaning coming up!",
-      "Bag Cleaning": "👜 Bag cleaning in progress!",
-      "Curtain Cleaning": "🪟 Curtains getting a fresh clean!"
-    };
-
-    return messages[itemName] || `✨ ${itemName} added to cart!`;
+  const formatUnitLabel = (unit) => {
+    if (!unit) return 'Per Piece';
+    const u = unit.toLowerCase();
+    if (u === 'sq ft' || u === 'sqft') return 'Per Sq. Ft.';
+    if (u === 'set') return 'Per Set';
+    if (u === 'carpet') return 'Per Carpet';
+    if (u === 'pair') return 'Per Pair';
+    return 'Per Piece';
   };
 
-  const updateQty = (itemName, price, change) => {
+  const handleQuantityChange = (itemName, price, unit, change) => {
     const currentQty = getCartQty(itemName);
     const nextQty = Math.max(0, currentQty + change);
 
@@ -102,34 +101,33 @@ export default function CustomizeSidebar({
       itemName,
       nextQty,
       price,
-      "item"
+      formatUnitLabel(unit)
     );
-
-    if (change > 0) {
-      setToast(getMessage(itemName));
-
-      setTimeout(() => {
-        setToast("");
-      }, 2000);
-    }
   };
 
-  const subtotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  // Grand total & items count for customized service items
+  const totalSelectedCount = useMemo(() => {
+    return services.reduce((sum, item) => sum + getCartQty(item.name), 0);
+  }, [services, cart]);
 
-  const totalItems = cart.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
+  const grandTotal = useMemo(() => {
+    return services.reduce((sum, item) => sum + (getCartQty(item.name) * (Number(item.price) || 0)), 0);
+  }, [services, cart]);
+
+  const handleAddToCart = () => {
+    setToast(`Updated Customized Service selections! (₹${grandTotal})`);
+    setTimeout(() => {
+      setToast('');
+      onClose();
+    }, 1200);
+  };
 
   if (!isOpen) return null;
 
   return (
     <>
       {toast && (
-        <div className="toast-message">
+        <div className="toast-message" style={{ position: 'fixed', top: 20, right: 20, zIndex: 10000, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: 8, fontWeight: 700, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
           {toast}
         </div>
       )}
@@ -137,140 +135,111 @@ export default function CustomizeSidebar({
       <div
         className="sidebar-overlay"
         onClick={onClose}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998 }}
       />
 
-      <div className="custom-sidebar">
-
-        <div className="sidebar-header">
-          <h2>Customize Service</h2>
-
-          <button onClick={onClose}>
+      <div className="custom-sidebar dryclean-modal-panel">
+        <div className="dryclean-header">
+          <div>
+            <h2>Customize Service</h2>
+            <p>Select your custom service items and quantities below</p>
+          </div>
+          <button onClick={onClose} aria-label="Close modal">
             ✕
           </button>
         </div>
 
-          {Object.entries(groupedServices).length === 0 ? (
-          <div className="sidebar-section">
-            <p className="admin-empty-state">No customize services available.</p>
-          </div>
-        ) : (
-          Object.entries(groupedServices).map(([category, group]) => {
-            const categoryKey = `category-${category}`;
-            return (
-              <div className="sidebar-section" key={category}>
-                <h3
-                  onClick={() =>
-                    setOpenSections((s) => ({
-                      ...s,
-                      [categoryKey]: !s[categoryKey]
-                    }))
-                  }
-                >
+        <div className="dryclean-body">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', fontWeight: 600 }}>
+              Loading customization options…
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#ef4444', fontWeight: 600 }}>
+              {error}
+            </div>
+          ) : Object.entries(groupedServices).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b', fontWeight: 600 }}>
+              No customize services available right now.
+            </div>
+          ) : (
+            Object.entries(groupedServices).map(([category, items]) => (
+              <div key={category} style={{ marginBottom: 24 }}>
+                <h3 className="dryclean-category-title">
                   {category}
                 </h3>
 
-                {openSections[categoryKey] && (
-                  <>
-                    {group.items.map((item) => (
-                      <ItemRow
-                        key={item.id || item.name}
-                        item={item}
-                        quantity={getCartQty(item.name)}
-                        onChange={updateQty}
-                      />
-                    ))}
+                {items.map((item) => {
+                  const qty = getCartQty(item.name);
+                  const itemSubtotal = (Number(item.price) || 0) * qty;
 
-                    {Object.entries(group.subcategories).map(([subcategory, items]) => {
-                      const subcategoryKey = `subcategory-${category}-${subcategory}`;
-                      return (
-                        <div key={subcategory}>
-                          <h4
-                            onClick={() =>
-                              setOpenSections((s) => ({
-                                ...s,
-                                [subcategoryKey]: !s[subcategoryKey]
-                              }))
-                            }
-                          >
-                            {subcategory}
-                          </h4>
-
-                          {openSections[subcategoryKey] &&
-                            items.map((item) => (
-                              <ItemRow
-                                key={item.id || item.name}
-                                item={item}
-                                quantity={getCartQty(item.name)}
-                                onChange={updateQty}
-                              />
-                            ))}
+                  return (
+                    <div
+                      key={item.id || item.name}
+                      className={`dryclean-item-card ${qty > 0 ? 'has-selected' : ''}`}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong className="dryclean-item-name">{item.name}</strong>
+                          <span className="dryclean-unit-label">
+                            ₹{item.price} / {formatUnitLabel(item.unit)}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </>
-                )}
+
+                        <div className="dryclean-qty-controls">
+                          <button
+                            type="button"
+                            className="dryclean-qty-btn qty-minus"
+                            onClick={() => handleQuantityChange(item.name, item.price, item.unit, -1)}
+                            disabled={qty === 0}
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+                          <span className="dryclean-qty-count">{qty}</span>
+                          <button
+                            type="button"
+                            className="dryclean-qty-btn qty-plus"
+                            onClick={() => handleQuantityChange(item.name, item.price, item.unit, 1)}
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {qty > 0 && (
+                        <div style={{ marginTop: 8, fontSize: '0.82rem', color: '#27187E', fontWeight: 700, textAlign: 'right' }}>
+                          Subtotal: ₹{itemSubtotal}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })
-        )}
-
-        <div className="sidebar-footer">
-          <div className="sidebar-summary">
-            <p>
-              <strong>Items:</strong> {totalItems}
-            </p>
-
-            <p>
-              <strong>Subtotal:</strong> ₹{subtotal}
-            </p>
-          </div>
+            ))
+          )}
         </div>
 
+        <div className="dryclean-footer">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: '0.88rem', color: '#475569', fontWeight: 600 }}>
+              Items Selected: <strong style={{ color: '#0f172a' }}>{totalSelectedCount}</strong>
+            </span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#27187E' }}>
+              Total: ₹{grandTotal}
+            </span>
+          </div>
+
+          <button
+            onClick={handleAddToCart}
+            disabled={totalSelectedCount === 0}
+            className="dryclean-submit-btn"
+          >
+            Add Selected Items to Cart
+          </button>
+        </div>
       </div>
     </>
   );
 }
-
-function ItemRow({
-  item,
-  quantity,
-  onChange
-}) {
-  return (
-    <div className="custom-item">
-      <div className="item-info">
-        <strong>{item.name}</strong>
-        <div>₹{item.price}</div>
-      </div>
-
-      <div className="quantity-control">
-        <button
-          onClick={() =>
-            onChange(
-              item.name,
-              item.price,
-              -1
-            )
-          }
-        >
-          −
-        </button>
-
-        <span>{quantity}</span>
-
-        <button
-          onClick={() =>
-            onChange(
-              item.name,
-              item.price,
-              1
-            )
-          }
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-

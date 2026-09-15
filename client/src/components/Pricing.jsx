@@ -5,21 +5,22 @@ import API from "../api/api";
 export default function Pricing({
   cart,
   onUpdateQuantity,
-  onCustomize
+  onCustomize,
+  onOpenDryClean,
+  onOpenShoeClean
 }) {
   const [servicesList, setServicesList] = useState([]);
   const pricingRef = useRef(null);
   const getServiceImage = (serviceName) => {
-  const images = {
-    "Wash & Fold": "/pricing/fold.jpg",
-    "Wash & Iron": "/pricing/shoe.jpg",
-    "Dry Cleaning": "/pricing/dry.jpg",
-    "Shoes Cleaning": "/pricing/iron.jpg",
-    "Blanket Cleaning": "/pricing/bedsheet.jpg",
-    "Customize Your Service": "/pricing/wash.jpg"
+    const images = {
+      "Wash & Fold": "/pricing/fold.jpg",
+      "Wash & Iron": "/pricing/iron.jpg",
+      "Shoe Cleaning": "/pricing/shoe.jpg",
+      "Dry Cleaning": "/pricing/dry.jpg",
+      "Customize Your Service": "/pricing/wash.jpg"
+    };
+    return images[serviceName] || "/pricing/fold.jpg";
   };
-  return images[serviceName] || "/pricing/fold.jpg";
-};
 
   useEffect(() => {
     fetchServices();
@@ -28,63 +29,46 @@ export default function Pricing({
   const fetchServices = async () => {
     try {
       const response = await API.get("/api/services", {
-        params: { displayType: 'main' }
+        params: { displayType: "main" }
       });
-
-      setServicesList([
-        ...response.data,
-        {
-          _id: "custom-service",
-          name: "Customize Your Service",
-          unit: "package",
-          price: "Custom",
-          features: [
-            "Choose your own services",
-            "Flexible pricing",
-            "Tailored to your needs"
-          ],
-          featured: false
-        }
-      ]);
+      setServicesList(response.data);
     } catch (error) {
-      console.log(error);
+      console.error("Failed to fetch services", error);
     }
   };
 
   const scrollLeft = () => {
-    pricingRef.current?.scrollBy({
-      left: -350,
-      behavior: "smooth"
-    });
+    if (pricingRef.current) {
+      pricingRef.current.scrollBy({
+        left: -320,
+        behavior: "smooth"
+      });
+    }
   };
 
   const scrollRight = () => {
-    pricingRef.current?.scrollBy({
-      left: 350,
-      behavior: "smooth"
-    });
+    if (pricingRef.current) {
+      pricingRef.current.scrollBy({
+        left: 320,
+        behavior: "smooth"
+      });
+    }
   };
 
   return (
-    <section id="pricing" className="pricing-section">
+    <section className="pricing-section" id="pricing">
       <div className="container">
+        <h2 className="section-title">
+          Popular Services
+        </h2>
 
-      <h2 className="section-title white-bg-heading">
-  <span className="services-our">Our</span> <span className="services-premium">Premium</span> <span className="services-services">Services</span>
-</h2>
-      
-
-        <p className="section-subtitle white-bg-subtitle">
-          Transparent pricing with no hidden charges
-        </p>
-
-        <div className="pricing-slider-wrapper">
+        <div className="pricing-wrapper">
 
           <button
             className="pricing-arrow left"
             onClick={scrollLeft}
           >
-            ←
+            ‹
           </button>
 
           <div
@@ -93,6 +77,18 @@ export default function Pricing({
           >
 
             {servicesList.map((service, i) => {
+              const isDryClean = service.name
+                .toLowerCase()
+                .includes("dry");
+
+              const isCustom = service.name
+                .toLowerCase()
+                .includes("customize");
+
+              const isShoeClean = service.name
+                .toLowerCase()
+                .includes("shoe");
+
               const cartItem = cart.find(
                 (item) => item.name === service.name
               );
@@ -102,11 +98,10 @@ export default function Pricing({
                 : 0;
 
               const delay = i * 100;
-              console.log(service.name);
 
               return (
                 <div
-                  key={service._id}
+                  key={service._id || service.id}
                   className={`pricing-card ${
                     service.featured
                       ? "featured"
@@ -122,24 +117,26 @@ export default function Pricing({
                   )}
 
                   <div className="card-image">
-  <img
-    src={getServiceImage(service.name)}
-    alt={service.name}
-  />
-</div>
+                    <img
+                      src={getServiceImage(service.name)}
+                      alt={service.name}
+                    />
+                  </div>
 
-<h3>{service.name}</h3>
+                  <h3 className="pricing-title">{service.name}</h3>
 
-                  <p className="pricing-unit">
-                    per {service.unit}
-                  </p>
-
-                  {service._id !==
-                    "custom-service" && (
-                    <p className="pricing-amount">
-                      ₹{service.price}
-                    </p>
-                  )}
+                  <div className="pricing-meta-area">
+                    {!isDryClean && !isCustom && !isShoeClean && (
+                      <>
+                        <p className="pricing-unit">
+                          per {service.unit}
+                        </p>
+                        <p className="pricing-amount">
+                          ₹{service.price}
+                        </p>
+                      </>
+                    )}
+                  </div>
 
                   <ul className="pricing-features">
                     {(service.features || []).map(
@@ -153,13 +150,26 @@ export default function Pricing({
 
                   <div className="btn-container">
 
-                    {service._id ===
-                    "custom-service" ? (
+                    {isCustom ? (
                       <button
                         className="btn btn-primary customize-btn"
                         onClick={onCustomize}
                       >
                         Customize Your Service
+                      </button>
+                    ) : isDryClean ? (
+                      <button
+                        className="btn btn-primary add-btn"
+                        onClick={onOpenDryClean}
+                      >
+                        Select Your Clothes
+                      </button>
+                    ) : isShoeClean ? (
+                      <button
+                        className="btn btn-primary add-btn"
+                        onClick={onOpenShoeClean}
+                      >
+                        Select Your Shoes
                       </button>
                     ) : quantity === 0 ? (
                       <button

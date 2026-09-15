@@ -3,6 +3,12 @@ import dns from 'dns';
 import mongoose from 'mongoose';
 
 
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // ignore
+}
+
 const connectDB = async () => {
   try {
     if (!process.env.MONGO_URI) {
@@ -11,11 +17,9 @@ const connectDB = async () => {
       return;
     }
 
-    if (process.env.MONGO_URI.startsWith('mongodb+srv://')) {
-      // dns.setServers(['8.8.8.8', '1.1.1.1']);
-    }
-
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      family: 4
+    });
 
 console.log(`\x1b[36m%s\x1b[0m`, `MongoDB Connected: ${conn.connection.host}`);
 console.log("Database:", conn.connection.name);

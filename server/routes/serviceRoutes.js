@@ -6,14 +6,19 @@ const router = express.Router();
 
 // @desc    Get all laundry services
 // @route   GET /api/services
-// @access  Public
+// @access  Public (customers only get active services; admin can query all)
 router.get('/', async (req, res) => {
   try {
-    const { displayType, customizeCategory, customizeSubcategory, featured } = req.query;
+    const { displayType, customizeCategory, customizeSubcategory, featured, includeInactive } = req.query;
     const filter = {};
 
+    // By default for customer-facing site, only return active services (isActive !== false)
+    if (includeInactive !== 'true') {
+      filter.isActive = { $ne: false };
+    }
+
     if (displayType === 'main') {
-      filter.$or = [{ displayType: 'main' }, { displayType: { $exists: false } }];
+      filter.displayType = 'main';
     } else if (displayType === 'customize') {
       filter.displayType = 'customize';
     }
@@ -30,7 +35,7 @@ router.get('/', async (req, res) => {
       filter.customizeSubcategory = customizeSubcategory;
     }
 
-    const services = await Service.find(filter);
+    const services = await Service.find(filter).sort({ sortOrder: 1, createdAt: 1 });
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: 'Server Error fetching services', error: error.message });
@@ -42,7 +47,7 @@ router.get('/', async (req, res) => {
 // @access  Admin
 router.post('/', adminAuth, async (req, res) => {
   try {
-    const { id, name, unit, price, surahiUnitCost, features, featured, displayType, customizeCategory, customizeSubcategory } = req.body;
+    const { id, name, unit, price, surahiUnitCost, features, featured, displayType, customizeCategory, customizeSubcategory, isActive, sortOrder } = req.body;
 
     // Check if service already exists
     const serviceExists = await Service.findOne({ id });
@@ -60,7 +65,9 @@ router.post('/', adminAuth, async (req, res) => {
       featured,
       displayType,
       customizeCategory,
-      customizeSubcategory
+      customizeSubcategory,
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+      sortOrder: Number(sortOrder || 0)
     });
 
     const createdService = await service.save();
@@ -75,8 +82,11 @@ router.post('/', adminAuth, async (req, res) => {
 // @access  Admin
 router.put('/:id', adminAuth, async (req, res) => {
   try {
-    const { name, unit, price, surahiUnitCost, features, featured, displayType, customizeCategory, customizeSubcategory } = req.body;
-    const service = await Service.findOne({ id: req.params.id });
+    const { name, unit, price, surahiUnitCost, features, featured, displayType, customizeCategory, customizeSubcategory, isActive, sortOrder } = req.body;
+    let service = await Service.findOne({ id: req.params.id });
+    if (!service && req.params.id?.match(/^[0-9a-fA-F]{24}$/)) {
+      service = await Service.findById(req.params.id);
+    }
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
@@ -90,6 +100,8 @@ router.put('/:id', adminAuth, async (req, res) => {
     if (displayType !== undefined) service.displayType = displayType;
     if (customizeCategory !== undefined) service.customizeCategory = customizeCategory;
     if (customizeSubcategory !== undefined) service.customizeSubcategory = customizeSubcategory;
+    if (isActive !== undefined) service.isActive = Boolean(isActive);
+    if (sortOrder !== undefined) service.sortOrder = Number(sortOrder || 0);
 
     const updatedService = await service.save();
     res.json(updatedService);
@@ -103,11 +115,15 @@ router.put('/:id', adminAuth, async (req, res) => {
 // @access  Admin
 router.delete('/:id', adminAuth, async (req, res) => {
   try {
-    const result = await Service.deleteOne({ id: req.params.id });
-    if (!result || result.deletedCount === 0) {
+    let service = await Service.findOne({ id: req.params.id });
+    if (!service && req.params.id?.match(/^[0-9a-fA-F]{24}$/)) {
+      service = await Service.findById(req.params.id);
+    }
+    if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
 
+    await Service.deleteOne({ _id: service._id });
     res.json({ message: 'Service removed' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete service', error: error.message });

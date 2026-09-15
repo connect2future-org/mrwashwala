@@ -48,6 +48,30 @@ const serviceSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: ''
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    sortOrder: {
+      type: Number,
+      default: 0
+    },
+    stainRemovalPrice: {
+      type: Number,
+      default: 0
+    },
+    hasStainRemoval: {
+      type: Boolean,
+      default: false
+    },
+    premiumCleanPrice: {
+      type: Number,
+      default: 0
+    },
+    hasPremiumClean: {
+      type: Boolean,
+      default: false
     }
   },
   {
