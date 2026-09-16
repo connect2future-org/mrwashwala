@@ -616,7 +616,7 @@ if (pickupMinutes < PICKUP_TIME_MINUTES || pickupMinutes > PICKUP_TIME_MAX_MINUT
         }
 
         alert(
-          `Online payment architecture is ready and provider setup is pending. Reference: ${merchantOrderId || "N/A"}. Please use WhatsApp checkout for now.`
+          `Online payment architecture is ready and provider setup is pending. Reference: ${merchantOrderId || "N/A"}. Please use Cash on Delivery for now.`
         );
         return;
       }
@@ -1050,7 +1050,7 @@ if (pickupMinutes < PICKUP_TIME_MINUTES || pickupMinutes > PICKUP_TIME_MAX_MINUT
                   cursor: "pointer"
                 }}
               >
-                WhatsApp Checkout
+                Cash on Delivery
               </button>
 
               <button
@@ -1097,7 +1097,7 @@ if (pickupMinutes < PICKUP_TIME_MINUTES || pickupMinutes > PICKUP_TIME_MAX_MINUT
                 color: "#5a6b96"
               }}
             >
-              Selected: {paymentMethod === "online" ? "Online Payment" : paymentMethod === "upi" ? "UPI QR Payment" : "WhatsApp Checkout"}
+              Selected: {paymentMethod === "online" ? "Online Payment" : paymentMethod === "upi" ? "UPI QR Payment" : "Cash on Delivery"}
             </div>
 
             

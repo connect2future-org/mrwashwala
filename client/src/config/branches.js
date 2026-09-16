@@ -88,11 +88,11 @@ export const branches = [
     name: "Mr. WashWala - Kuvempunagar, Mysuru",
     shortName: "Kuvempunagar",
     businessName: SHARED_BUSINESS_INFO.businessName,
-    address: { 
-      line1: "Kuvempunagar", 
-      line2: "Mysuru", 
-      line3: "Karnataka", 
-      full: "Kuvempunagar, Mysuru, Karnataka" 
+    address: {
+      line1: "Kuvempunagar",
+      line2: "Mysuru",
+      line3: "Karnataka",
+      full: "Kuvempunagar, Mysuru, Karnataka"
     },
     mapsUrl: "https://www.google.com/maps/search/?api=1&query=Kuvempunagar,+Mysuru,+Karnataka",
     latitude: 12.2850,
@@ -102,6 +102,30 @@ export const branches = [
     email: SHARED_BUSINESS_INFO.email,
     isActive: false,
     comingSoon: true,
+    businessHours: DEFAULT_BUSINESS_HOURS
+  }
+];
+
+export const adminBranches = [
+  ...branches.filter(b => b.isActive),
+  {
+    id: "kuvempunagar-1st-stage-mysuru",
+    name: "Mr. WashWala - Kuvempu Nagar 1st Stage, Mysuru",
+    shortName: "Kuvempu Nagar 1st Stage",
+    businessName: SHARED_BUSINESS_INFO.businessName,
+    address: {
+      line1: "Main Road",
+      line2: "Kuvempu Nagar 1st Stage",
+      line3: "Mysuru, Karnataka 570023",
+      full: "Main Road, Kuvempu Nagar 1st Stage, Mysuru, Karnataka 570023"
+    },
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Kuvempu+Nagar+1st+Stage,+Mysuru,+Karnataka",
+    latitude: 12.2850,
+    longitude: 76.6250,
+    phone: "7019436720",
+    whatsapp: SHARED_BUSINESS_INFO.whatsapp,
+    email: SHARED_BUSINESS_INFO.email,
+    isActive: true,
     businessHours: DEFAULT_BUSINESS_HOURS
   }
 ];

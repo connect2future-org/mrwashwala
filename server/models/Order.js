@@ -47,6 +47,14 @@ const orderSchema = new mongoose.Schema(
         unit: {
           type: String,
           required: true
+        },
+        surahiUnitCost: {
+          type: Number,
+          default: 0
+        },
+        surahiTotalCost: {
+          type: Number,
+          default: 0
         }
       }
     ],
@@ -72,7 +80,22 @@ const orderSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    deliveryDate: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     paymentMethod: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['Pending', 'Paid', 'Refunded'],
+      default: 'Pending'
+    },
+    orderSummary: {
       type: String,
       trim: true,
       default: ''

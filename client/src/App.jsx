@@ -7,6 +7,21 @@ import ServicesPage from "./pages/ServicesPage";
 import FranchisePage from "./pages/FranchisePage";
 import ContactPage from "./pages/ContactPage";
 import SiteLayout from "./layouts/SiteLayout";
+import AdminLayout from "./layouts/AdminLayout.jsx";
+import AdminLogin from "./pages/admin/Login.jsx";
+import AdminDashboard from "./pages/admin/Dashboard.jsx";
+import AdminOrders from "./pages/admin/Orders.jsx";
+import AdminCustomers from "./pages/admin/Customers.jsx";
+import AdminServices from "./pages/admin/Services.jsx";
+import AdminReviews from "./pages/admin/Reviews.jsx";
+import AdminFranchiseLeads from "./pages/admin/FranchiseLeads.jsx";
+import AdminWalkInOrders from "./pages/admin/WalkInOrders.jsx";
+import OrderProcessing from "./pages/admin/OrderProcessing.jsx";
+import ProcessingDetail from "./pages/admin/ProcessingDetail.jsx";
+import AdminRevenue from "./pages/admin/Revenue.jsx";
+import AdminInventory from "./pages/admin/Inventory.jsx";
+import AdminAnalytics from "./pages/admin/Analytics.jsx";
+import ProtectedRoute from "./components/admin/ProtectedRoute.jsx";
 import React, { useState, useEffect } from "react";
 
 import "./index.css";
@@ -18,6 +33,8 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [isDryCleanOpen, setIsDryCleanOpen] = useState(false);
+  const [isShoeCleanOpen, setIsShoeCleanOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [homeMascotVideoIndex, setHomeMascotVideoIndex] = useState(0);
   useEffect(() => {
@@ -125,6 +142,22 @@ export default function App() {
     setIsCustomizeOpen(false);
   };
 
+  const openDryClean = () => {
+    setIsDryCleanOpen(true);
+  };
+
+  const closeDryClean = () => {
+    setIsDryCleanOpen(false);
+  };
+
+  const openShoeClean = () => {
+    setIsShoeCleanOpen(true);
+  };
+
+  const closeShoeClean = () => {
+    setIsShoeCleanOpen(false);
+  };
+
 
   const handleHomeMascotVideoEnded = () => {
     setHomeMascotVideoIndex((prev) => (prev + 1) % HOME_MASCOT_VIDEOS.length);
@@ -183,6 +216,12 @@ export default function App() {
               isCustomizeOpen={isCustomizeOpen}
               onOpenCustomize={openCustomize}
               onCloseCustomize={closeCustomize}
+              isDryCleanOpen={isDryCleanOpen}
+              onOpenDryClean={openDryClean}
+              onCloseDryClean={closeDryClean}
+              isShoeCleanOpen={isShoeCleanOpen}
+              onOpenShoeClean={openShoeClean}
+              onCloseShoeClean={closeShoeClean}
               onRemoveItem={handleRemoveItem}
               onOpenCheckout={openCheckout}
               isCheckoutOpen={isCheckoutOpen}
@@ -223,6 +262,23 @@ export default function App() {
           </SiteLayout>
         }
       />
+
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="insights" element={<AdminAnalytics />} />
+        <Route path="orders" element={<AdminOrders />} />
+        <Route path="walkin-orders" element={<AdminWalkInOrders />} />
+        <Route path="customers" element={<AdminCustomers />} />
+        <Route path="services" element={<AdminServices />} />
+        <Route path="reviews" element={<AdminReviews />} />
+        <Route path="franchise-leads" element={<AdminFranchiseLeads />} />
+        <Route path="processing" element={<OrderProcessing />} />
+        <Route path="processing/:id" element={<ProcessingDetail />} />
+        <Route path="revenue" element={<AdminRevenue />} />
+        <Route path="inventory" element={<AdminInventory />} />
+      </Route>
 
       <Route path="/address" element={<Navigate to="/contact#address" replace />} />
 
