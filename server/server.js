@@ -6,6 +6,7 @@ try {
 import fs from 'fs';
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import cors from 'cors';
 
@@ -166,14 +167,19 @@ app.get('/debug-services', async (req, res) => {
 });
 
 // =========================
-// Root Route
+// Serve React/Vite Frontend
 // =========================
 
+const frontendPath = fileURLToPath(new URL('../client/dist', import.meta.url));
+
+app.use(express.static(frontendPath));
+
 app.get('/', (req, res) => {
-  res.send(`
-    <h1>Welcome to Mr. Washwala API Server</h1>
-    <p>Running on Node.js + Express + MongoDB</p>
-  `);
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+app.get(/^\/(?!api(?:\/|$)|api-status$|debug-services$).*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // =========================
