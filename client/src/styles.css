@@ -2829,6 +2829,93 @@ border-radius: 10px;
 width: fit-content;
 }
 
+/* BRANCH ADDRESSES SECTION & GRID */
+.branch-addresses-section {
+  margin-top: 48px;
+  width: 100%;
+}
+
+.branch-addresses-header {
+  margin-bottom: 20px;
+}
+
+.branch-addresses-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 24px !important;
+  width: 100% !important;
+  align-items: stretch !important;
+}
+
+.branch-address-card {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  padding: 24px 24px 22px 24px !important;
+  background: #ffffff !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.branch-address-card h3 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 12px !important;
+  color: #27187E !important;
+}
+
+.branch-address-card p {
+  margin: 0 0 12px 0 !important;
+  line-height: 1.5 !important;
+  color: #333333 !important;
+  font-size: 0.95rem !important;
+}
+
+.branch-address-card .contact-label {
+  margin-top: 4px !important;
+  margin-bottom: 16px !important;
+  color: rgba(0, 0, 0, 0.55) !important;
+  font-size: 0.88rem !important;
+}
+
+.branch-address-card .contact-branch-link {
+  margin-top: auto !important;
+  padding-top: 8px !important;
+  color: #27187E !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.branch-address-card .contact-branch-link:hover {
+  opacity: 0.8 !important;
+  text-decoration: underline !important;
+}
+
+@media (max-width: 991px) {
+  .branch-addresses-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 20px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .branch-addresses-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .branch-addresses-section {
+    margin-top: 36px !important;
+  }
+  .branch-address-card {
+    padding: 20px !important;
+  }
+}
+
 /* GLASS CARDS */
 
 .contact-card {

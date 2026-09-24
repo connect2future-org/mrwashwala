@@ -82,26 +82,26 @@ export const branches = [
   },
 
   // -----------------------------------------------------------------------
-  // Kuvempunagar - Coming Soon
+  // Kuvempunagar 1st Stage - Newly Opened
   {
     id: "kuvempunagar-mysuru",
-    name: "Mr. WashWala - Kuvempunagar, Mysuru",
-    shortName: "Kuvempunagar",
+    name: "Mr. WashWala - Kuvempunagar 1st Stage, Mysuru",
+    shortName: "Kuvempunagar 1st Stage",
     businessName: SHARED_BUSINESS_INFO.businessName,
     address: {
-      line1: "Kuvempunagar",
-      line2: "Mysuru",
-      line3: "Karnataka",
-      full: "Kuvempunagar, Mysuru, Karnataka"
+      line1: "7JPF+6C7, 1st Main Rd",
+      line2: "Kuvempu Nagar 1st Stage, Nimishamba Layout",
+      line3: "Mysuru, Karnataka 570023",
+      full: "7JPF+6C7, 1st Main Rd, Kuvempu Nagar 1st Stage, Nimishamba Layout, Mysuru, Karnataka 570023"
     },
-    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Kuvempunagar,+Mysuru,+Karnataka",
+    mapsUrl: "https://maps.app.goo.gl/N9MDo3meYtYi35qdA?g_st=aw",
     latitude: 12.2850,
     longitude: 76.6260,
-    phone: SHARED_BUSINESS_INFO.phone,
+    phone: "9035999271",
     whatsapp: SHARED_BUSINESS_INFO.whatsapp,
     email: SHARED_BUSINESS_INFO.email,
-    isActive: false,
-    comingSoon: true,
+    isActive: true,
+    comingSoon: false,
     businessHours: DEFAULT_BUSINESS_HOURS
   }
 ];

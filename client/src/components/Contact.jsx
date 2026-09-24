@@ -8,35 +8,6 @@ const BRANCH_PIN_COLORS = ['#27187E', '#0E9F6E'];
 export default function Contact() {
   const location = useLocation();
   const activeBranches = branches.filter((b) => b.isActive);
-  // First branch (Vijayanagar) stays in the left column with the contact
-  // methods; any remaining branches (Vijaynagar 2nd Stage) move under the map on the
-  // right so both columns end up roughly the same height.
-  const [primaryBranch, ...otherBranches] = activeBranches;
-
-  // Same branch-card markup used in both columns — kept identical to the
-  // original card so styling/animations/content are unchanged, just reused
-  // to avoid duplicating the JSX in two places.
-  const renderBranchCard = (branch, delay) => (
-    <div
-      className="contact-card"
-      data-aos="fade-right"
-      data-aos-delay={delay}
-      key={branch.id}
-    >
-      <h3>📍 {branch.shortName}</h3>
-      <p>
-        {branch.address.line1}
-        <br />
-        {branch.address.line2}
-        <br />
-        {branch.address.line3}
-      </p>
-      <div className="contact-label">Open everyday 9 AM - 8 PM</div>
-      <Link to={`/branches/${branch.id}`} className="contact-branch-link">
-        View branch details →
-      </Link>
-    </div>
-  );
 
   // Builds a Google Maps embed URL (no API key required) with a labeled
   // pin for every active branch, so the map always reflects branches.js.
@@ -129,13 +100,6 @@ export default function Contact() {
                 </div>
               </div>
             </div>
-
-            <h3 id="address" className="contact-subsection-title">
-              Branch Addresses
-            </h3>
-
-            {/* Primary Branch Address (Vijayanagar) */}
-            {primaryBranch && renderBranchCard(primaryBranch, 300)}
           </div>
 
           {/* Right Column: Map */}
@@ -169,13 +133,39 @@ export default function Contact() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Remaining Branch Address(es) (Bhogadi) — placed directly
-                beneath the map so this column's height matches the left
-                column instead of leaving empty space below the map. */}
-            {otherBranches.map((branch, index) =>
-              renderBranchCard(branch, 300 + index * 100)
-            )}
+        {/* Branch Addresses Grid Section */}
+        <div className="branch-addresses-section">
+          <div className="branch-addresses-header">
+            <h3 id="address" className="contact-subsection-title">
+              Branch Addresses
+            </h3>
+          </div>
+
+          <div className="branch-addresses-grid">
+            {activeBranches.map((branch, index) => (
+              <div
+                className="contact-card branch-address-card"
+                data-aos="fade-up"
+                data-aos-delay={300 + index * 100}
+                key={branch.id}
+              >
+                <h3>📍 {branch.shortName}</h3>
+                <p>
+                  {branch.address.line1}
+                  <br />
+                  {branch.address.line2}
+                  <br />
+                  {branch.address.line3}
+                </p>
+                <div className="contact-label">Open everyday 9 AM - 8 PM</div>
+                <Link to={`/branches/${branch.id}`} className="contact-branch-link">
+                  View branch details →
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
       </div>

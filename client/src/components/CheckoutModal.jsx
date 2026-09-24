@@ -265,6 +265,7 @@ const [formData, setFormData] = useState({
   const [upiIntentUrl, setUpiIntentUrl] = useState("");
   const [upiQrUrl, setUpiQrUrl] = useState("");
   const [utrNumber, setUtrNumber] = useState("");
+  const [utrError, setUtrError] = useState("");
 
   useEffect(() => {
     // Preload checkout animation video to avoid visible lag on submit.
@@ -290,6 +291,7 @@ const [formData, setFormData] = useState({
       setUpiIntentUrl("");
       setUpiQrUrl("");
       setUtrNumber("");
+      setUtrError("");
       setRankedBranches([]);
       setRecommendedBranchId(null);
       setSelectedBranchId(null);
@@ -499,17 +501,33 @@ const [formData, setFormData] = useState({
 
     setUpiIntentUrl(upiUrl);
     setUpiQrUrl(qrUrl);
+    setUtrError("");
     setShowUpiStep(true);
   };
 
+  const handleUtrChange = (e) => {
+    const rawVal = e.target.value;
+    const digitsOnly = rawVal.replace(/\D/g, "").slice(0, 12);
+    setUtrNumber(digitsOnly);
+
+    if (digitsOnly.length === 12) {
+      setUtrError("");
+    } else if (digitsOnly.length > 0 || utrError) {
+      setUtrError("Invalid UTR. UTR must be exactly 12 digits.");
+    }
+  };
+
   const handleConfirmUpiPayment = () => {
-    if (!utrNumber.trim()) {
-      alert("Please enter UTR / transaction reference number after payment.");
+    const is12Digits = /^\d{12}$/.test(utrNumber);
+    if (!is12Digits) {
+      setUtrError("Invalid UTR. UTR must be exactly 12 digits.");
       return;
     }
 
+    setUtrError("");
+
     const message = buildWhatsAppMessage(
-      `Mode: UPI QR (Manual Verification)\nUTR: ${utrNumber.trim()}\nStatus: Payment completed by customer, verification pending.`
+      `Mode: UPI QR (Manual Verification)\nUTR: ${utrNumber}\nStatus: Payment completed by customer, verification pending.`
     );
 
     setShowUpiStep(false);
@@ -709,18 +727,34 @@ if (pickupMinutes < PICKUP_TIME_MINUTES || pickupMinutes > PICKUP_TIME_MAX_MINUT
 
           <input
             type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={12}
             value={utrNumber}
-            onChange={(e) => setUtrNumber(e.target.value.trimStart())}
+            onChange={handleUtrChange}
             placeholder="Enter UTR / Transaction Reference Number"
             style={{
               width: "100%",
               padding: "12px",
-              border: "1px solid #d5ddef",
+              border: utrError ? "1px solid #e53e3e" : "1px solid #d5ddef",
               borderRadius: "10px",
               fontSize: "14px",
-              marginBottom: "14px"
+              marginBottom: utrError ? "6px" : "14px",
+              outline: "none"
             }}
           />
+          {utrError && (
+            <div
+              style={{
+                color: "#e53e3e",
+                fontSize: "13px",
+                fontWeight: "500",
+                marginBottom: "14px"
+              }}
+            >
+              {utrError}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button

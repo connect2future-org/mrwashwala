@@ -14,8 +14,8 @@ export default function Pricing({
   const getServiceImage = (serviceName) => {
     const images = {
       "Wash & Fold": "/pricing/fold.jpg",
-      "Wash & Iron": "/pricing/iron.jpg",
-      "Shoe Cleaning": "/pricing/shoe.jpg",
+      "Wash & Iron": "/pricing/shoe.jpg",
+      "Shoe Cleaning": "/pricing/iron.jpg",
       "Dry Cleaning": "/pricing/dry.jpg",
       "Customize Your Service": "/pricing/wash.jpg"
     };

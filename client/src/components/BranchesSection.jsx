@@ -35,19 +35,19 @@ const branches = [
   },
   {
     id: 3,
-    title: 'Kuvempunagar',
-    badge: 'Coming Soon',
+    title: 'Kuvempunagar 1st Stage',
+    badge: 'Newly Opened',
     description:
-      'Our upcoming Mr. WashWala outlet bringing premium laundry service, dry cleaning, and doorstep delivery convenience to Kuenpon Nagar, Kuenpon Nagar, Mysore.',
-    location: 'Kuvempunagar, Mysuru',
+      'Our newly opened Mr. WashWala outlet brings premium laundry service, dry cleaning, and doorstep delivery convenience to Kuvempunagar 1st Stage, Mysore.',
+    location: 'Kuvempunagar 1st Stage, Mysuru',
     image:
       branchContent?.['kuvempunagar-mysuru']?.cardImage ||
-      '/branches/kuvempunagar-coming-soon.jpg',
-    mapLink: branchConfig.find((branch) => branch.id === 'kuvempunagar-mysuru')?.mapsUrl || 'https://www.google.com/maps/search/?api=1&query=Kuvempunagar,+Mysuru,+Karnataka',
+      '/branches/kuvempunagar-1st-stage-hero.jpg',
+    mapLink: branchConfig.find((branch) => branch.id === 'kuvempunagar-mysuru')?.mapsUrl || 'https://maps.app.goo.gl/N9MDo3meYtYi35qdA?g_st=aw',
     phone: '9035999271',
     whatsapp: '917019436720',
-    isNew: false,
-    isComingSoon: true,
+    isNew: true,
+    isComingSoon: false,
   },
 ];
 

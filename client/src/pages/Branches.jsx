@@ -30,8 +30,8 @@ export default function Branches() {
       name: "Mr. WashWala - Vijaynagar 4th Stage, Mysuru"
     },
     "kuvempunagar-mysuru": {
-      shortName: "Kuvempunagar",
-      name: "Mr. WashWala - Kuvempunagar, Mysuru"
+      shortName: "Kuvempunagar 1st Stage",
+      name: "Mr. WashWala - Kuvempunagar 1st Stage, Mysuru"
     }
   };
 

@@ -90,15 +90,17 @@ export const branchContent = {
     ],
   },
   "kuvempunagar-mysuru": {
-    tagline: "Coming soon to serve Kuvempunagar with premium garment care.",
-    cardImage: "/branches/kuvempunagar-coming-soon.jpg",
-    coverImage: "/branches/kuvempunagar-coming-soon.jpg",
+    tagline: "Newly opened to serve Kuvempunagar 1st Stage with premium garment care.",
+    cardImage: "/branches/kuvempunagar-1st-stage-hero.jpg",
+    coverImage: "/branches/kuvempunagar-1st-stage-hero.jpg",
     gallery: [
-      "/branches/kuvempunagar-coming-soon.jpg"
+      "/branches/kuvempunagar-1st-stage-hero.jpg",
+      "/branches/kuvempunagar-1.jpg",
+      "/branches/kuvempunagar-2.jpg"
     ],
     video: null,
     about:
-      "We are expanding! Our upcoming Kuvempunagar outlet will bring Mr. WashWala's trusted premium laundry, dry cleaning, steam ironing, and doorstep pickup services to Kuvempunagar and surrounding areas.",
+      "Our newly opened Kuvempunagar 1st Stage outlet brings Mr. WashWala's trusted premium laundry, dry cleaning, steam ironing, and doorstep pickup services to Kuvempunagar 1st Stage, Mysore and surrounding areas.",
     features: [
       {
         icon: "⚡",
@@ -113,7 +115,7 @@ export const branchContent = {
       {
         icon: "🚴",
         title: "Free Pickup & Drop",
-        desc: "Doorstep collection across Kuvempunagar.",
+        desc: "Doorstep collection across Kuvempunagar 1st Stage.",
       },
       {
         icon: "🌟",
