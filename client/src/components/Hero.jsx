@@ -102,7 +102,7 @@ export default function Hero({ isMobile, homeMascotVideoIndex, onHomeMascotVideo
               </button>
 
               <a
-                href="https://wa.me/919035999271?text=Hi%20Mr.%20WashWala%2C%20I%20want%20to%20book%20a%20laundry%20pickup%20service!"
+                href="https://wa.me/919035999272?text=Hi%20Mr.%20WashWala%2C%20I%20want%20to%20book%20a%20laundry%20pickup%20service!"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-whatsapp"

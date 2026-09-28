@@ -55,9 +55,7 @@ export default function Contact() {
               <div className="contact-card" data-aos="fade-right">
                 <h3>📞 Phone</h3>
                 <p>
-                  <a href="tel:9035999271">+91 9035999271</a>
-                  <br />
-                  <a href="tel:+917019436720">+91 7019436720</a>
+                  <a href="tel:9035999272">+91 9035999272</a>
                 </p>
                 <div className="contact-label">Available everyday</div>
               </div>
@@ -71,7 +69,7 @@ export default function Contact() {
                 <h3>💬 WhatsApp</h3>
                 <p>
                   <a
-                    href="https://wa.me/919035999271?text=Hi%20Mr.%20WashWala%2C%20I%20want%20to%20know%20about%20your%20services"
+                    href="https://wa.me/919035999272?text=Hi%20Mr.%20WashWala%2C%20I%20want%20to%20know%20about%20your%20services"
                     target="_blank"
                     rel="noreferrer"
                   >

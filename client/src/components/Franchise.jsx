@@ -104,7 +104,7 @@ export default function Franchise() {
 
         <div className="franchise-buttons">
           <a
-            href="https://wa.me/917019436720"
+            href="https://wa.me/919035999272"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary franchise-btn"

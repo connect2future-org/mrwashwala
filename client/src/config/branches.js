@@ -24,8 +24,8 @@
 // Do not change these; both branches use identical contact details, only the address differs.
 export const SHARED_BUSINESS_INFO = {
   businessName: "Mr. WashWala",
-  phone: "7019436720",
-  whatsapp: "917019436720",
+  phone: "9035999272",
+  whatsapp: "919035999272",
   email: "mrwashwala@gmail.com",
   workingHoursLabel: "Open everyday 9 AM - 8 PM"
 };
@@ -53,8 +53,8 @@ export const branches = [
     // Approximate coordinates for Vani Vilas Layout, Vijayanagar 2nd Stage, Mysuru.
     latitude: 12.3192,
     longitude: 76.6172,
-    phone: "7019436720",
-    whatsapp: "919035999271",
+    phone: "9035999272",
+    whatsapp: "919035999272",
     email: SHARED_BUSINESS_INFO.email,
     isActive: true,
     businessHours: DEFAULT_BUSINESS_HOURS
@@ -74,7 +74,7 @@ export const branches = [
     // Approximate coordinates for Vijayanagar 4th Stage, Mysuru.
     latitude: 12.3505,
     longitude: 76.585,
-    phone: "9035999271",
+    phone: "9035999272",
     whatsapp: SHARED_BUSINESS_INFO.whatsapp,
     email: SHARED_BUSINESS_INFO.email,
     isActive: true,
@@ -97,7 +97,7 @@ export const branches = [
     mapsUrl: "https://maps.app.goo.gl/N9MDo3meYtYi35qdA?g_st=aw",
     latitude: 12.2850,
     longitude: 76.6260,
-    phone: "9035999271",
+    phone: "9035999272",
     whatsapp: SHARED_BUSINESS_INFO.whatsapp,
     email: SHARED_BUSINESS_INFO.email,
     isActive: true,
@@ -122,7 +122,7 @@ export const adminBranches = [
     mapsUrl: "https://www.google.com/maps/search/?api=1&query=Kuvempu+Nagar+1st+Stage,+Mysuru,+Karnataka",
     latitude: 12.2850,
     longitude: 76.6250,
-    phone: "7019436720",
+    phone: "9035999272",
     whatsapp: SHARED_BUSINESS_INFO.whatsapp,
     email: SHARED_BUSINESS_INFO.email,
     isActive: true,

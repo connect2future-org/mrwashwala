@@ -14,8 +14,8 @@ const branches = [
       branchContent?.['vijaynagar-mysuru']?.cardImage ||
       '/branches/vijaynagar-2nd-stage-hero.jpg',
     mapLink: branchConfig.find((branch) => branch.id === 'vijaynagar-mysuru')?.mapsUrl || 'https://www.google.com/maps/search/?api=1&query=12,+Vani+Vilas+Layout,+Stage+2,+Vijayanagar,+Mysuru,+Karnataka+570017',
-    phone: '9035999271',
-    whatsapp: '917019436720',
+    phone: '9035999272',
+    whatsapp: '919035999272',
     isNew: false,
   },
   {
@@ -28,9 +28,9 @@ const branches = [
     image:
       branchContent?.['vijayanagar-2nd-stage-mysuru']?.cardImage ||
       '/branches/vijaynagar-hero.jpg',
-    mapLink: branchConfig.find((branch) => branch.id === 'vijaynagar-2nd-stage-mysuru')?.mapsUrl || 'https://www.google.com/maps/search/?api=1&query=7700A,+2nd+Phase,+Vijayanagar+4th+Stage,+Bhogadi,+Karnataka+570032',
-    phone: '7019436720',
-    whatsapp: '919035999271',
+    mapLink: branchConfig.find((branch) => branch.id === 'vijayanagar-2nd-stage-mysuru')?.mapsUrl || 'https://www.google.com/maps/search/?api=1&query=7700A,+2nd+Phase,+Vijayanagar+4th+Stage,+Bhogadi,+Karnataka+570032',
+    phone: '9035999272',
+    whatsapp: '919035999272',
     isNew: true,
   },
   {
@@ -44,8 +44,8 @@ const branches = [
       branchContent?.['kuvempunagar-mysuru']?.cardImage ||
       '/branches/kuvempunagar-1st-stage-hero.jpg',
     mapLink: branchConfig.find((branch) => branch.id === 'kuvempunagar-mysuru')?.mapsUrl || 'https://maps.app.goo.gl/N9MDo3meYtYi35qdA?g_st=aw',
-    phone: '9035999271',
-    whatsapp: '917019436720',
+    phone: '9035999272',
+    whatsapp: '919035999272',
     isNew: true,
     isComingSoon: false,
   },
