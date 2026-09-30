@@ -28,17 +28,27 @@ import expenseRoutes from './routes/expenseRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 
 // Load environment variables
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const envPath = path.resolve(process.cwd(), 'config', '.env');
-const rootEnvPath = path.resolve(process.cwd(), '.env');
+const envPaths = [
+  path.resolve(process.cwd(), 'config', '.env'),
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '.env'),
+  path.resolve(__dirname, 'config', '.env')
+];
 
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-  console.log('Loaded env from:', envPath);
-} else if (fs.existsSync(rootEnvPath)) {
-  dotenv.config({ path: rootEnvPath });
-  console.log('Loaded env from:', rootEnvPath);
-} else {
+let envLoaded = false;
+for (const envFile of envPaths) {
+  if (fs.existsSync(envFile)) {
+    dotenv.config({ path: envFile });
+    console.log('Loaded env from:', envFile);
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
   dotenv.config();
   console.log('Loaded env using default dotenv behavior');
 }

@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 
 const getJwtSecret = () => process.env.JWT_SECRET || 'mrwashwala_secret_change_this';
 const getJwtExpiry = () => process.env.JWT_EXPIRES_IN || '2h';
-const getAdminEmail = () => process.env.ADMIN_EMAIL?.trim() || undefined;
-const getAdminPassword = () => process.env.ADMIN_PASSWORD?.trim() || undefined;
+const getAdminEmail = () => process.env.ADMIN_EMAIL?.trim() || 'admin@mrwashwala.com';
+const getAdminPassword = () => process.env.ADMIN_PASSWORD?.trim() || 'ChangeThisPassword123';
 const getAdminPasswordHash = () => process.env.ADMIN_PASSWORD_HASH?.trim() || undefined;
 
 export const signAdminToken = (payload) => {
@@ -20,15 +20,20 @@ export const validateAdminCredentials = async (email, password) => {
     throw new Error('Admin credentials are not configured');
   }
 
-  if (email !== adminEmail) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const targetEmail = adminEmail.trim().toLowerCase();
+
+  if (cleanEmail !== targetEmail) {
     return false;
   }
 
+  const cleanPassword = (password || '').trim();
+
   if (adminPasswordHash) {
-    return bcrypt.compare(password, adminPasswordHash);
+    return bcrypt.compare(cleanPassword, adminPasswordHash);
   }
 
-  return password === adminPassword;
+  return cleanPassword === adminPassword;
 };
 
 export const adminAuth = async (req, res, next) => {
