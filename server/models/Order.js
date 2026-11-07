@@ -7,6 +7,11 @@ const orderSchema = new mongoose.Schema(
       unique: true,
       required: true
     },
+    customerRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Customer',
+      default: null
+    },
     customer: {
       name: {
         type: String,

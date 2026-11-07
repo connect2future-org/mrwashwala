@@ -102,6 +102,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Branch selection is required' });
     }
 
+    const closedBranchIds = ['kuvempunagar-mysuru', 'kuvempunagar-1st-stage-mysuru'];
+    if (
+      closedBranchIds.includes(String(branch.id || '').toLowerCase().trim()) ||
+      /kuvempu/i.test(String(branch.name || '')) ||
+      /kuvempu/i.test(String(branch.id || ''))
+    ) {
+      return res.status(400).json({
+        message: 'The Kuvempunagar 1st Stage outlet is permanently closed and cannot accept new orders.'
+      });
+    }
+
     if (!Array.isArray(services) || services.length === 0) {
       return res.status(400).json({ message: 'At least one service is required' });
     }

@@ -1,9 +1,11 @@
 import express from 'express';
 import Order from '../models/Order.js';
+import Service from '../models/Service.js';
 import WalkInOrder from '../models/WalkInOrder.js';
 import OrderProcessing from '../models/OrderProcessing.js';
 import { determineWorkflow } from '../config/workflows.js';
 import { adminAuth } from '../middleware/authMiddleware.js';
+import { optionalCustomerAuth } from '../middleware/customerAuthMiddleware.js';
 
 const router = express.Router();
 
@@ -27,8 +29,8 @@ const generateUniqueOrderId = async () => {
 
 // @desc    Create a new order booking
 // @route   POST /api/orders
-// @access  Public
-router.post('/', async (req, res) => {
+// @access  Public (Guest web or Authenticated Customer mobile)
+router.post('/', optionalCustomerAuth, async (req, res) => {
   try {
     const {
       customer,
@@ -50,6 +52,27 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Customer details (name, phone, address) are required' });
     }
 
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'Cart items are required' });
+    }
+
+    // Reject new orders assigned to the permanently closed Kuvempunagar 1st Stage outlet
+    const isClosedOutlet = (branch) => {
+      if (!branch) return false;
+      const id = typeof branch === 'string' ? branch : branch.id;
+      const name = typeof branch === 'object' ? branch.name || branch.shortName || '' : '';
+      const closedIds = ['kuvempunagar-mysuru', 'kuvempunagar-1st-stage-mysuru'];
+      if (id && closedIds.includes(String(id).toLowerCase().trim())) return true;
+      if (/kuvempu/i.test(String(id || '')) || /kuvempu/i.test(String(name || ''))) return true;
+      return false;
+    };
+
+    if (isClosedOutlet(selectedBranch) || isClosedOutlet(recommendedBranch)) {
+      return res.status(400).json({
+        message: 'The Kuvempunagar 1st Stage outlet is permanently closed and cannot accept new orders. Please select an active branch.'
+      });
+    }
+
     const normalizedPaymentStatus = (() => {
       if (paymentStatus && paymentStatus !== 'Pending') return paymentStatus;
       if (['QR Payment', 'Online Payment'].includes(paymentMethod)) return 'Paid';
@@ -57,57 +80,72 @@ router.post('/', async (req, res) => {
       return 'Pending';
     })();
 
-    const normalizedOrderSummary = orderSummary && orderSummary.trim()
-      ? orderSummary.trim()
-      : items?.map((item) => {
-          const unitText = item.unit ? ` ${item.unit}` : '';
-          return `${item.name} (${item.quantity}${unitText})`;
-        }).join(', ');
-
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: 'Cart items are required' });
-    }
-
-    // Fetch all services to match surahiUnitCost
+    // Fetch all services for server-side price calculation & Surahi cost matching
     const dbServices = await Service.find({});
     const serviceMap = {};
+    const priceMap = {};
+
     dbServices.forEach(s => {
-      serviceMap[s.name.toLowerCase().trim()] = s.surahiUnitCost || 0;
+      const key = s.name.toLowerCase().trim();
+      serviceMap[key] = s.surahiUnitCost || 0;
+      priceMap[key] = s.price;
     });
 
+    let calculatedTotal = 0;
+
     const normalizedItems = items.map(item => {
-      const nameLower = item.name.toLowerCase().trim();
+      const nameLower = (item.name || '').toLowerCase().trim();
+      const quantity = Number(item.quantity) || 0;
+
+      // Server-side price validation: Use database price if service exists, otherwise fallback to item.price
+      const verifiedPrice = priceMap[nameLower] !== undefined ? priceMap[nameLower] : (Number(item.price) || 0);
+
       let surahiUnitCost = item.surahiUnitCost !== undefined ? Number(item.surahiUnitCost) : (serviceMap[nameLower] || 0);
       
       // Fallback for dry cleaning
       if (surahiUnitCost === 0 && (nameLower.includes('dry cleaning') || nameLower.includes('dry clean'))) {
-        surahiUnitCost = Math.round(Number(item.price || 0) * 0.7);
+        surahiUnitCost = Math.round(verifiedPrice * 0.7);
       }
       
+      calculatedTotal += verifiedPrice * quantity;
+
       return {
         name: item.name,
-        quantity: Number(item.quantity) || 0,
-        price: Number(item.price) || 0,
+        quantity,
+        price: verifiedPrice,
         unit: item.unit || 'Kg',
         surahiUnitCost,
-        surahiTotalCost: surahiUnitCost * (Number(item.quantity) || 0)
+        surahiTotalCost: surahiUnitCost * quantity
       };
     });
+
+    const finalTotalAmount = calculatedTotal > 0 ? calculatedTotal : (Number(totalAmount) || 0);
+
+    const normalizedOrderSummary = orderSummary && orderSummary.trim()
+      ? orderSummary.trim()
+      : normalizedItems.map((item) => {
+          const unitText = item.unit ? ` ${item.unit}` : '';
+          return `${item.name} (${item.quantity}${unitText})`;
+        }).join(', ');
 
     // Generate unique order ID
     const orderId = await generateUniqueOrderId();
 
+    // Attach customerRef if request is from an authenticated customer
+    const customerRef = req.customer ? req.customer._id : null;
+
     const order = new Order({
       orderId,
+      customerRef,
       customer,
       items: normalizedItems,
-      totalAmount,
+      totalAmount: finalTotalAmount,
       latitude,
       longitude,
       pickupDate,
       pickupTime,
       deliveryDate,
-      paymentMethod,
+      paymentMethod: paymentMethod || 'Cash on Delivery',
       paymentStatus: normalizedPaymentStatus,
       orderSummary: normalizedOrderSummary,
       recommendedBranch,
@@ -117,7 +155,7 @@ router.post('/', async (req, res) => {
     const savedOrder = await order.save();
 
     // Create OrderProcessing tickets for each item
-    const processingTickets = items.map(item => {
+    const processingTickets = normalizedItems.map(item => {
       const workflow = determineWorkflow(item.name);
       return {
         orderId: savedOrder.orderId,
@@ -133,6 +171,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(savedOrder);
   } catch (error) {
+    console.error('Order creation failed:', error.message);
     res.status(500).json({ message: 'Failed to create order', error: error.message });
   }
 });

@@ -21,8 +21,10 @@ const adminBranches = [
   },
   {
     id: "kuvempunagar-1st-stage-mysuru",
-    name: "Mr. WashWala - Kuvempu Nagar 1st Stage, Mysuru",
-    shortName: "Kuvempu Nagar 1st Stage"
+    name: "Mr. WashWala - Kuvempu Nagar 1st Stage, Mysuru (Closed)",
+    shortName: "Kuvempu Nagar 1st Stage (Closed)",
+    isActive: false,
+    isClosed: true
   }
 ];
 
@@ -473,7 +475,7 @@ router.get('/', async (req, res) => {
       let cleanName = b.name.replace('Mr. WashWala - ', '');
       if (cleanName.includes('2nd Stage')) cleanName = 'Vijayanagar 2nd Stage';
       if (cleanName.includes('4th Stage')) cleanName = 'Vijayanagar 4th Stage';
-      if (cleanName.includes('1st Stage')) cleanName = 'Kuvempunagar 1st Stage';
+      if (cleanName.includes('1st Stage')) cleanName = 'Kuvempunagar 1st Stage (Closed)';
       return {
         id: b.id,
         name: cleanName,
@@ -640,7 +642,7 @@ router.get('/', async (req, res) => {
       let outletName = bestOutlet.name.replace('Mr. WashWala - ', '');
       if (outletName.includes('2nd Stage')) outletName = 'Vijayanagar Second Stage';
       if (outletName.includes('4th Stage')) outletName = 'Vijayanagar Fourth Stage';
-      if (outletName.includes('1st Stage')) outletName = 'Kuvempunagar First Stage';
+      if (outletName.includes('1st Stage')) outletName = 'Kuvempunagar First Stage (Closed)';
       insights.push(`🏪 ${outletName} is the highest-performing outlet.`);
     } else {
       insights.push("Not enough data to generate this insight.");

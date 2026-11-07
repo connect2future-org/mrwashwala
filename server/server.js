@@ -27,6 +27,12 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 
+import customerAuthRoutes from './routes/customerAuthRoutes.js';
+import customerProfileRoutes from './routes/customerProfileRoutes.js';
+import customerAddressRoutes from './routes/customerAddressRoutes.js';
+import customerOrderRoutes from './routes/customerOrderRoutes.js';
+import customerReviewRoutes from './routes/customerReviewRoutes.js';
+
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,6 +136,13 @@ app.use('/api/revenue', revenueRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
+// Customer Mobile App Routes
+app.use('/api/customer/auth', customerAuthRoutes);
+app.use('/api/customer/profile', customerProfileRoutes);
+app.use('/api/customer/addresses', customerAddressRoutes);
+app.use('/api/customer/orders', customerOrderRoutes);
+app.use('/api/customer/reviews', customerReviewRoutes);
 
 // =========================
 // API Status Route

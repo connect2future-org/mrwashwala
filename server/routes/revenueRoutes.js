@@ -22,8 +22,10 @@ const adminBranches = [
   },
   {
     id: "kuvempunagar-1st-stage-mysuru",
-    name: "Mr. WashWala - Kuvempu Nagar 1st Stage, Mysuru",
-    shortName: "Kuvempu Nagar 1st Stage"
+    name: "Mr. WashWala - Kuvempu Nagar 1st Stage, Mysuru (Closed)",
+    shortName: "Kuvempu Nagar 1st Stage (Closed)",
+    isActive: false,
+    isClosed: true
   }
 ];
 
